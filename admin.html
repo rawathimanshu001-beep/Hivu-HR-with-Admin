@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hivu HR — Admin Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+:root {
+  --primary: #0066FF;
+  --primary-light: #00D4FF;
+  --red: #FF4D6A;
+  --orange: #FFA500;
+  --green: #00C853;
+  --navy: #0A0F25;
+  --surface: #1A1F3B;
+  --border: #2A3247;
+  --text: #F5F7FA;
+  --muted: #8A9BB5;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background: var(--navy);
+  color: var(--text);
+}
+
+body.light-mode {
+  --navy: #FFFFFF;
+  --surface: #F5F7FA;
+  --border: #E0E0E0;
+  --text: #1A1F3B;
+  --muted: #666666;
+}
+
+.admin-container {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 280px;
+  background: var(--surface);
+  border-right: 1px solid rgba(0, 102, 255, 0.1);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 20px 16px;
+  border-bottom: 1px solid rgba(0, 102, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-logo {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.sidebar-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sidebar-subtitle {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sidebar-menu {
+  flex: 1;
+  padding: 12px 8px;
+}
+
+.menu-item {
+  padding: 12px 16px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.menu-item:hover {
+  background: rgba(0, 102, 255, 0.1);
+  color: var(--primary-light);
+}
+
+.menu-item.active {
+  background: rgba(0, 102, 255, 0.2);
+  color: var(--primary-light);
+}
+
+.menu-item i {
+  font-size: 16px;
+}
+
+.sidebar-footer {
+  padding: 12px 8px;
+  border-top: 1px solid rgba(0, 102, 255, 0.1);
+}
+
+.logout-btn {
+  width: 100%;
+  padding: 10px 16px;
+  background: rgba(255, 77, 106, 0.1);
+  color: var(--red);
+  border: 1px solid rgba(255, 77, 106, 0.2);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: var(--red);
+  color: white;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid rgba(0, 102, 255, 0.1);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topbar-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgba(0, 102, 255, 0.1);
+  border: none;
+  color: var(--primary-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.2s;
+}
+
+.icon-btn:hover {
+  background: rgba(0, 102, 255, 0.2);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.section {
+  display: none;
+}
+
+.section.active {
+  display: block;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid rgba(0, 102, 255, 0.1);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid rgba(0, 102, 255, 0.1);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-add {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-add:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 102, 255, 0.15);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--navy);
+  transition: border 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--primary-light);
+  background: var(--surface);
+  outline: none;
+}
+
+.btn-submit {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.3);
+}
+
+.btn-approve {
+  padding: 6px 12px;
+  background: rgba(0, 200, 83, 0.2);
+  color: var(--green);
+  border: 1px solid rgba(0, 200, 83, 0.3);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-approve:hover {
+  background: var(--green);
+  color: white;
+}
+
+.btn-reject {
+  padding: 6px 12px;
+  background: rgba(255, 77, 106, 0.2);
+  color: var(--red);
+  border: 1px solid rgba(255, 77, 106, 0.3);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+.btn-reject:hover {
+  background: var(--red);
+  color: white;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid rgba(0, 102, 255, 0.1);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(0, 102, 255, 0.05);
+  font-size: 13px;
+}
+
+.table tr:hover {
+  background: rgba(0, 102, 255, 0.05);
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-pending {
+  background: rgba(255, 165, 0, 0.2);
+  color: var(--orange);
+}
+
+.status-approved {
+  background: rgba(0, 200, 83, 0.2);
+  color: var(--green);
+}
+
+.status-rejected {
+  background: rgba(255, 77, 106, 0.2);
+  color: var(--red);
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 6, 14, 0.75);
+  backdrop-filter: blur(3px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal.open {
+  display: flex;
+}
+
+.modal-content {
+  background: var(--surface);
+  border: 1px solid rgba(0, 102, 255, 0.2);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 102, 255, 0.1);
+}
+
+.tab-btn {
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  color: var(--primary-light);
+  border-bottom-color: var(--primary-light);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+  .content {
+    padding: 16px;
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="display:flex;flex-direction:column;min-height:100vh;background:linear-gradient(135deg,var(--navy) 0%,#050812 100%);align-items:center;justify-content:center;padding:24px">
+  <div style="text-align:center;margin-bottom:40px">
+    <div style="font-size:48px;font-weight:700;background:linear-gradient(135deg,var(--primary-light),var(--primary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px">Hivu</div>
+    <div style="color:rgba(255,255,255,0.4);font-size:13px">Admin Dashboard</div>
+  </div>
+
+  <div style="background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:16px;padding:24px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">Admin Login</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Enter your credentials</div>
+
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="admin-email" placeholder="admin@company.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="admin-password" placeholder="••••••••">
+    </div>
+    <button class="btn-submit" style="width:100%" onclick="adminLogin()">Sign In</button>
+    <div style="font-size:12px;color:var(--muted);margin-top:14px;text-align:center">Demo: admin / admin123</div>
+  </div>
+</div>
+
+<div id="admin-app" class="admin-container" style="display:none">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">H</div>
+      <div>
+        <div class="sidebar-title">Hivu HR</div>
+        <div class="sidebar-subtitle">Admin</div>
+      </div>
+    </div>
+
+    <div class="sidebar-menu">
+      <button class="menu-item active" onclick="switchSection('dashboard')">
+        <i class="ti ti-dashboard"></i> Dashboard
+      </button>
+      <button class="menu-item" onclick="switchSection('settings')">
+        <i class="ti ti-settings"></i> Settings
+      </button>
+      <button class="menu-item" onclick="switchSection('employees')">
+        <i class="ti ti-users"></i> Employees
+      </button>
+      <button class="menu-item" onclick="switchSection('leaves')">
+        <i class="ti ti-calendar"></i> Leave Approval
+      </button>
+      <button class="menu-item" onclick="switchSection('regularization')">
+        <i class="ti ti-alert-circle"></i> Regularization
+      </button>
+      <button class="menu-item" onclick="switchSection('holidays')">
+        <i class="ti ti-holiday"></i> Holidays
+      </button>
+      <button class="menu-item" onclick="switchSection('reports')">
+        <i class="ti ti-chart-bar"></i> Reports
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="adminLogout()">
+        <i class="ti ti-logout"></i> Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title" id="section-title">Dashboard</div>
+      <div class="topbar-actions">
+        <button class="icon-btn" onclick="toggleTheme()">
+          <i class="ti ti-sun" id="theme-icon"></i>
+        </button>
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-light));display:flex;align-items:center;justify-content:center;color:white;font-weight:700">A</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- DASHBOARD SECTION -->
+      <div id="dashboard" class="section active">
+        <div class="stat-grid" id="dashboard-stats">
+          <div class="stat-card">
+            <div class="stat-label">Present Today</div>
+            <div class="stat-value" id="stat-present">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Absent</div>
+            <div class="stat-value" id="stat-absent">—</div>
+            <div class="stat-sub">Not clocked in</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Late</div>
+            <div class="stat-value" id="stat-late">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">On Leave</div>
+            <div class="stat-value" id="stat-leave">—</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Pending Leave Approvals</div>
+          <div id="pending-leaves-list">
+            <div style="text-align:center;color:var(--muted);padding:20px;font-size:12px">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS SECTION -->
+      <div id="settings" class="section">
+        <div class="card">
+          <div class="card-title">Company Settings</div>
+
+          <div class="tabs">
+            <button class="tab-btn active" onclick="switchSettingsTab('work')">Work Hours</button>
+            <button class="tab-btn" onclick="switchSettingsTab('leave')">Leave Types</button>
+            <button class="tab-btn" onclick="switchSettingsTab('company')">Company Logo</button>
+            <button class="tab-btn" onclick="switchSettingsTab('weekend')">Weekend</button>
+          </div>
+
+          <!-- Work Hours Tab -->
+          <div id="settings-work" style="display:block">
+            <div class="form-group">
+              <label class="form-label">Work Start Time</label>
+              <input type="time" class="form-input" id="set-work-start" value="09:00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Work End Time</label>
+              <input type="time" class="form-input" id="set-work-end" value="18:00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Late After Time</label>
+              <input type="time" class="form-input" id="set-late-after" value="09:30">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Min Hours Per Day</label>
+              <input type="number" class="form-input" id="set-min-hours" value="8" min="1" max="12">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Penalty Per Late Hour (₹)</label>
+              <input type="number" class="form-input" id="set-penalty" value="-100">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Short Day Threshold (Hours)</label>
+              <input type="number" class="form-input" id="set-short-day" value="6" min="1" max="12">
+            </div>
+            <button class="btn-submit" onclick="saveCompanySettings()">💾 Save Settings</button>
+          </div>
+
+          <!-- Leave Types Tab -->
+          <div id="settings-leave" style="display:none">
+            <div id="leave-types-list">
+              <div style="text-align:center;color:var(--muted);padding:20px;font-size:12px">Loading...</div>
+            </div>
+            <button class="btn-add" style="width:100%;margin-top:16px" onclick="openAddLeaveTypeModal()">+ Add Leave Type</button>
+          </div>
+
+          <!-- Company Logo Tab -->
+          <div id="settings-company" style="display:none">
+            <div class="form-group">
+              <label class="form-label">Company Logo</label>
+              <div style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;background:rgba(0,102,255,0.05)">
+                <img id="company-logo-preview" src="" style="max-width:150px;max-height:150px;margin-bottom:16px;display:none">
+                <input type="file" id="company-logo-input" accept="image/*" onchange="uploadCompanyLogo()" style="display:none">
+                <button type="button" class="btn-submit" onclick="document.getElementById('company-logo-input').click()">📤 Upload Logo</button>
+              </div>
+              <p style="font-size:12px;color:var(--muted);margin-top:8px">Recommended: 200x200px PNG/JPG</p>
+            </div>
+          </div>
+
+          <!-- Weekend Tab -->
+          <div id="settings-weekend" style="display:none">
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <input type="checkbox" id="sat-off" checked> Saturday OFF
+              </label>
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <input type="checkbox" id="sun-off" checked> Sunday OFF
+              </label>
+            </div>
+            <button class="btn-submit" onclick="saveWeekendSettings()">Save Settings</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- EMPLOYEES SECTION -->
+      <div id="employees" class="section">
+        <div class="card">
+          <div class="card-title">
+            <span>Employees</span>
+            <button class="btn-add" onclick="openAddEmployeeModal()">+ Add Employee</button>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Designation</th>
+                <th>Salary</th>
+                <th>Edit Salary</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="employees-list">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted)">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LEAVE APPROVAL SECTION -->
+      <div id="leaves" class="section">
+        <div class="card">
+          <div class="card-title">Leave Requests</div>
+          <div id="leave-requests-list">
+            <div style="text-align:center;color:var(--muted);padding:20px;font-size:12px">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ATTENDANCE REGULARIZATION SECTION -->
+      <div id="regularization" class="section">
+        <div class="card">
+          <div class="card-title">Attendance Regularization Requests</div>
+          <div style="overflow-x:auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Emp ID</th>
+                  <th>Name</th>
+                  <th>Date</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="regularization-list">
+                <tr><td colspan="6" style="text-align:center;color:var(--muted)">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- HOLIDAYS SECTION -->
+      <div id="holidays" class="section">
+        <div class="card">
+          <div class="card-title">
+            <span>Company Holidays</span>
+            <button class="btn-add" onclick="openAddHolidayModal()">+ Add Holiday</button>
+          </div>
+          <div id="holidays-list">
+            <div style="text-align:center;color:var(--muted);padding:20px;font-size:12px">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REPORTS SECTION -->
+      <div id="reports" class="section">
+        <div class="card">
+          <div class="card-title">Reports</div>
+
+          <div class="tabs">
+            <button class="tab-btn active" onclick="switchReportTab('attendance')">Attendance</button>
+            <button class="tab-btn" onclick="switchReportTab('leave')">Leave</button>
+            <button class="tab-btn" onclick="switchReportTab('late')">Late</button>
+            <button class="tab-btn" onclick="switchReportTab('salary')">Salary Slip</button>
+          </div>
+
+          <!-- Attendance Report -->
+          <div id="report-attendance" style="display:block">
+            <div class="form-group">
+              <label class="form-label">Select Month</label>
+              <input type="month" class="form-input" id="report-month" value="2026-01">
+            </div>
+            <button class="btn-submit" style="width:100%" onclick="generateAttendanceReport()">📊 Generate Report</button>
+            <div id="attendance-report-content" style="margin-top:16px"></div>
+          </div>
+
+          <!-- Leave Report -->
+          <div id="report-leave" style="display:none">
+            <button class="btn-submit" style="width:100%;margin-bottom:16px" onclick="generateLeaveReport()">📋 Generate Leave Report</button>
+            <div id="leave-report-content"></div>
+          </div>
+
+          <!-- Late Report -->
+          <div id="report-late" style="display:none">
+            <div class="form-group">
+              <label class="form-label">Select Month</label>
+              <input type="month" class="form-input" id="late-report-month" value="2026-01">
+            </div>
+            <button class="btn-submit" style="width:100%" onclick="generateLateReport()">⏰ Generate Report</button>
+            <div id="late-report-content" style="margin-top:16px"></div>
+          </div>
+
+          <!-- Salary Slip Report -->
+          <div id="report-salary" style="display:none">
+            <div class="form-group">
+              <label class="form-label">Select Employee</label>
+              <select class="form-input" id="salary-emp-select">
+                <option value="">-- Select Employee --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Select Month</label>
+              <input type="month" class="form-input" id="salary-month" value="2026-07">
+            </div>
+            <div style="display:flex;gap:10px">
+              <button class="btn-submit" style="flex:1" onclick="handleSalarySlip('print')">🖨️ Print</button>
+              <button class="btn-submit" style="flex:1;background:#FF9500" onclick="handleSalarySlip('download')">⬇️ Download</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="add-employee-modal" class="modal">
+  <div class="modal-content" style="position:relative">
+    <button class="modal-close" onclick="closeModal('add-employee-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title">Add Employee</div>
+    <div class="form-group">
+      <label class="form-label">Employee ID</label>
+      <input type="text" class="form-input" id="emp-id" placeholder="EMP001">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Name</label>
+      <input type="text" class="form-input" id="emp-name" placeholder="Full name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Phone</label>
+      <input type="tel" class="form-input" id="emp-phone" placeholder="+91 98765 43210">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="emp-email" placeholder="email@company.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Designation</label>
+      <input type="text" class="form-input" id="emp-designation" placeholder="Designation">
+    </div>
+    <button class="btn-submit" style="width:100%" onclick="addEmployee()">Add Employee</button>
+  </div>
+</div>
+
+<div id="add-holiday-modal" class="modal">
+  <div class="modal-content" style="position:relative">
+    <button class="modal-close" onclick="closeModal('add-holiday-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title">Add Holiday</div>
+    <div class="form-group">
+      <label class="form-label">Holiday Name</label>
+      <input type="text" class="form-input" id="holiday-name" placeholder="Holiday name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" class="form-input" id="holiday-date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input type="text" class="form-input" id="holiday-desc" placeholder="Description">
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="holiday-restricted"> Optional Holiday
+      </label>
+    </div>
+    <button class="btn-submit" style="width:100%" onclick="addHoliday()">Add Holiday</button>
+  </div>
+</div>
+
+<!-- Add Leave Type Modal -->
+<div id="add-leave-type-modal" class="modal">
+  <div class="modal-content" style="position:relative">
+    <button class="modal-close" onclick="closeModal('add-leave-type-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title">Add Leave Type</div>
+    <div class="form-group">
+      <label class="form-label">Leave Type Name</label>
+      <input type="text" class="form-input" id="leave-type-name" placeholder="Casual, Sick, Paid...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Days Per Year</label>
+      <input type="number" class="form-input" id="leave-type-days" placeholder="12" min="1" max="60">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Color</label>
+      <input type="color" class="form-input" id="leave-type-color" value="#0066FF" style="height:40px;cursor:pointer">
+    </div>
+    <button class="btn-submit" style="width:100%" onclick="addLeaveType()">Add Leave Type</button>
+  </div>
+</div>
+
+<!-- Add Employee Salary Modal -->
+<div id="add-employee-salary-modal" class="modal">
+  <div class="modal-content" style="position:relative">
+    <button class="modal-close" onclick="closeModal('add-employee-salary-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title">Set Employee Salary</div>
+    <div class="form-group">
+      <label class="form-label">Employee ID</label>
+      <input type="text" class="form-input" id="salary-emp-id" placeholder="EMP001" readonly>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Basic Salary</label>
+      <input type="number" class="form-input" id="salary-basic" placeholder="50000" min="0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">HRA (House Rent Allowance)</label>
+      <input type="number" class="form-input" id="salary-hra" placeholder="10000" min="0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">PF Deduction</label>
+      <input type="number" class="form-input" id="salary-pf" placeholder="2000" min="0">
+    </div>
+    <button class="btn-submit" style="width:100%" onclick="saveSalary()">Save Salary</button>
+  </div>
+</div>
+
+<!-- Attendance Regularization Modal -->
+<div id="attend-regularization-modal" class="modal">
+  <div class="modal-content" style="position:relative;max-width:600px;max-height:80vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeModal('attend-regularization-modal')"><i class="ti ti-x"></i></button>
+    <div class="modal-title">Attendance Regularization Requests</div>
+    <div id="regularization-list" style="max-height:500px;overflow-y:auto">
+      <div style="text-align:center;color:var(--muted);padding:20px">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+const ADMIN_DEMO = { email: 'admin', password: 'admin123' };
+let supabaseClient;
+let adminUser = null;
+
+async function initSupabase() {
+  if (!window.HIVU_CONFIG || !HIVU_CONFIG.supabaseUrl || !HIVU_CONFIG.supabaseKey) {
+    alert('Supabase not configured');
+    return false;
+  }
+  const { createClient } = window.supabase;
+  supabaseClient = createClient(HIVU_CONFIG.supabaseUrl, HIVU_CONFIG.supabaseKey);
+  return true;
+}
+
+function adminLogin() {
+  const email = document.getElementById('admin-email').value;
+  const password = document.getElementById('admin-password').value;
+
+  if (email === ADMIN_DEMO.email && password === ADMIN_DEMO.password) {
+    adminUser = { email };
+    localStorage.setItem('admin_email', email);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-app').style.display = 'flex';
+    loadDashboard();
+  } else {
+    alert('Invalid credentials');
+  }
+}
+
+function adminLogout() {
+  adminUser = null;
+  localStorage.removeItem('admin_email');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-app').style.display = 'none';
+  document.getElementById('admin-email').value = '';
+  document.getElementById('admin-password').value = '';
+}
+
+function switchSection(section) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(section).classList.add('active');
+  document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+  event.target.closest('.menu-item').classList.add('active');
+
+  const titles = {
+    dashboard: 'Dashboard',
+    settings: 'Settings',
+    employees: 'Employees',
+    leaves: 'Leave Approval',
+    regularization: 'Attendance Regularization',
+    holidays: 'Holidays',
+    reports: 'Reports'
+  };
+  document.getElementById('section-title').textContent = titles[section] || 'Dashboard';
+
+  if (section === 'dashboard') loadDashboard();
+  if (section === 'settings') loadCompanySettings();
+  if (section === 'employees') loadEmployeesList();
+  if (section === 'leaves') loadLeaveRequests();
+  if (section === 'regularization') loadRegularizationRequests();
+  if (section === 'holidays') loadHolidaysList();
+}
+
+function switchSettingsTab(tab) {
+  document.getElementById('settings-work').style.display = 'none';
+  document.getElementById('settings-leave').style.display = 'none';
+  document.getElementById('settings-company').style.display = 'none';
+  document.getElementById('settings-weekend').style.display = 'none';
+  document.getElementById(`settings-${tab}`).style.display = 'block';
+
+  document.querySelectorAll('.tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  if (tab === 'leave') loadLeaveTypesList();
+  if (tab === 'company') loadCompanyLogo();
+}
+
+async function loadDashboard() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { data } = await supabaseClient
+      .from('attendance_logs')
+      .select('*')
+      .eq('date', today);
+
+    if (data) {
+      const stats = { present: 0, absent: 0, late: 0, leave: 0 };
+      data.forEach(log => {
+        if (log.status === 'Present') stats.present++;
+        else if (log.status === 'Late') stats.late++;
+        else if (log.status === 'Absent') stats.absent++;
+        else if (log.status === 'Leave') stats.leave++;
+      });
+
+      document.getElementById('stat-present').textContent = stats.present;
+      document.getElementById('stat-absent').textContent = stats.absent;
+      document.getElementById('stat-late').textContent = stats.late;
+      document.getElementById('stat-leave').textContent = stats.leave;
+    }
+
+    await loadPendingLeaves();
+    await loadCompanySettings();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function loadPendingLeaves() {
+  try {
+    const { data } = await supabaseClient
+      .from('leave_requests')
+      .select('*')
+      .eq('status', 'Pending')
+      .limit(5);
+
+    if (!data || data.length === 0) {
+      document.getElementById('pending-leaves-list').innerHTML =
+        '<div style="text-align:center;color:var(--muted);padding:20px;font-size:12px">No pending requests</div>';
+      return;
+    }
+
+    let html = '';
+    data.forEach(req => {
+      html += `
+        <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">Employee ${req.emp_id}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${req.days} days • ${req.from_date}</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-approve" onclick="approveLeave('${req.id}')">Approve</button>
+              <button class="btn-reject" onclick="rejectLeave('${req.id}')">Reject</button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    document.getElementById('pending-leaves-list').innerHTML = html;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function loadCompanySettings() {
+  try {
+    const { data } = await supabaseClient
+      .from('company_settings')
+      .select('*')
+      .limit(1)
+      .single();
+
+    if (data) {
+      document.getElementById('set-work-start').value = data.work_start_time || '09:00';
+      document.getElementById('set-work-end').value = data.work_end_time || '18:00';
+      document.getElementById('set-late-after').value = data.late_after_time || '09:30';
+      document.getElementById('set-min-hours').value = data.min_hours_per_day || 8;
+      document.getElementById('set-penalty').value = data.penalty_per_late_hour || -100;
+      document.getElementById('set-short-day').value = data.short_day_threshold || 6;
+      document.getElementById('sat-off').checked = data.saturday_off !== false;
+      document.getElementById('sun-off').checked = data.sunday_off !== false;
+    }
+  } catch (err) {
+    console.log('Settings loading...');
+  }
+}
+
+async function saveCompanySettings() {
+  const settings = {
+    work_start_time: document.getElementById('set-work-start').value,
+    work_end_time: document.getElementById('set-work-end').value,
+    late_after_time: document.getElementById('set-late-after').value,
+    min_hours_per_day: parseInt(document.getElementById('set-min-hours').value),
+    penalty_per_late_hour: parseInt(document.getElementById('set-penalty').value),
+    short_day_threshold: parseInt(document.getElementById('set-short-day').value)
+  };
+
+  try {
+    const { data: existing, error: fetchErr } = await supabaseClient
+      .from('company_settings')
+      .select('id')
+      .limit(1)
+      .single();
+
+    if (existing) {
+      const { error } = await supabaseClient
+        .from('company_settings')
+        .update(settings)
+        .eq('id', existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabaseClient
+        .from('company_settings')
+        .insert([settings]);
+      if (error) throw error;
+    }
+
+    alert('✅ Settings saved successfully!');
+    loadCompanySettings();
+  } catch (err) {
+    alert('Error saving settings: ' + err.message);
+    console.error(err);
+  }
+}
+
+async function saveWeekendSettings() {
+  const satOff = document.getElementById('sat-off').checked;
+  const sunOff = document.getElementById('sun-off').checked;
+
+  try {
+    const { data: existing } = await supabaseClient
+      .from('weekend_settings')
+      .select('id')
+      .limit(1)
+      .single();
+
+    if (existing) {
+      await supabaseClient
+        .from('weekend_settings')
+        .update({ saturday_off: satOff, sunday_off: sunOff })
+        .eq('id', existing.id);
+    } else {
+      await supabaseClient
+        .from('weekend_settings')
+        .insert({ saturday_off: satOff, sunday_off: sunOff });
+    }
+
+    alert('✅ Weekend settings saved');
+  } catch (err) {
+    alert('Error saving settings');
+    console.error(err);
+  }
+}
+
+async function loadEmployeesList() {
+  try {
+    const { data } = await supabaseClient
+      .from('employees')
+      .select('*')
+      .order('emp_id');
+
+    if (!data || data.length === 0) {
+      document.getElementById('employees-list').innerHTML =
+        '<tr><td colspan="5" style="text-align:center;color:var(--muted)">No employees</td></tr>';
+      return;
+    }
+
+    let html = '';
+    data.forEach(emp => {
+      html += `
+        <tr>
+          <td>${emp.emp_id}</td>
+          <td>${emp.name}</td>
+          <td>${emp.designation || '—'}</td>
+          <td>₹${emp.basic_salary || 0}</td>
+          <td><button class="btn-small" onclick="openAddSalaryModal('${emp.emp_id}')">💰 Edit</button></td>
+          <td><span class="status-badge status-approved">Active</span></td>
+          <td>
+            <button style="background:none;border:none;color:var(--primary-light);cursor:pointer;font-size:14px;padding:4px 8px">Edit</button>
+          </td>
+        </tr>
+      `;
+    });
+
+    document.getElementById('employees-list').innerHTML = html;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function loadLeaveRequests() {
+  try {
+    const { data } = await supabaseClient
+      .from('leave_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (!data || data.length === 0) {
+      document.getElementById('leave-requests-list').innerHTML =
+        '<div style="text-align:center;color:var(--muted);padding:20px">No leave requests</div>';
+      return;
+    }
+
+    let html = '';
+    data.forEach(req => {
+      const statusClass = `status-${req.status.toLowerCase()}`;
+      html += `
+        <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">EMP ${req.emp_id}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${req.days} days • ${req.from_date} to ${req.to_date}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:4px">${req.reason}</div>
+            </div>
+            <div style="text-align:right">
+              <span class="status-badge ${statusClass}">${req.status}</span>
+              ${req.status === 'Pending' ? `
+                <div style="margin-top:6px;display:flex;gap:4px;font-size:0">
+                  <button class="btn-approve" style="font-size:11px" onclick="approveLeave('${req.id}')">Approve</button>
+                  <button class="btn-reject" style="font-size:11px" onclick="rejectLeave('${req.id}')">Reject</button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    document.getElementById('leave-requests-list').innerHTML = html;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function approveLeave(id) {
+  try {
+    const { data: leave } = await supabaseClient
+      .from('leave_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (leave) {
+      await supabaseClient
+        .from('leave_requests')
+        .update({ status: 'Approved', approved_by: adminUser.email })
+        .eq('id', id);
+
+      await supabaseClient
+        .from('employee_leave_balance')
+        .select('*')
+        .eq('emp_id', leave.emp_id)
+        .eq('leave_type_id', leave.leave_type_id)
+        .then(async ({ data: balance }) => {
+          if (balance && balance[0]) {
+            await supabaseClient
+              .from('employee_leave_balance')
+              .update({ used: (balance[0].used || 0) + leave.days })
+              .eq('id', balance[0].id);
+          }
+        });
+
+      alert('✅ Leave approved!');
+      loadPendingLeaves();
+      loadLeaveRequests();
+    }
+  } catch (err) {
+    alert('Error approving leave');
+    console.error(err);
+  }
+}
+
+async function rejectLeave(id) {
+  const reason = prompt('Enter rejection reason:');
+  if (!reason) return;
+
+  try {
+    await supabaseClient
+      .from('leave_requests')
+      .update({ status: 'Rejected', approved_by: adminUser.email, comments: reason })
+      .eq('id', id);
+    alert('✅ Leave rejected');
+    loadPendingLeaves();
+    loadLeaveRequests();
+  } catch (err) {
+    alert('Error rejecting leave');
+    console.error(err);
+  }
+}
+
+async function loadLeaveTypesList() {
+  try {
+    const { data } = await supabaseClient
+      .from('leave_types')
+      .select('*');
+
+    if (!data || data.length === 0) {
+      document.getElementById('leave-types-list').innerHTML =
+        '<div style="text-align:center;color:var(--muted);padding:20px">No leave types</div>';
+      return;
+    }
+
+    let html = '';
+    data.forEach(type => {
+      html += `
+        <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${type.name}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${type.days_per_year} days/year</div>
+          </div>
+          <div style="width:16px;height:16px;background:${type.color};border-radius:4px"></div>
+        </div>
+      `;
+    });
+
+    document.getElementById('leave-types-list').innerHTML = html;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function loadHolidaysList() {
+  try {
+    const { data } = await supabaseClient
+      .from('company_holidays')
+      .select('*')
+      .order('date');
+
+    if (!data || data.length === 0) {
+      document.getElementById('holidays-list').innerHTML =
+        '<div style="text-align:center;color:var(--muted);padding:20px">No holidays</div>';
+      return;
+    }
+
+    let html = '';
+    data.forEach(holiday => {
+      const date = new Date(holiday.date).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
+      html += `
+        <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${holiday.holiday_name}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${date}</div>
+            </div>
+            ${holiday.is_restricted ? '<span style="font-size:10px;background:rgba(255,165,0,0.2);color:var(--orange);padding:4px 8px;border-radius:4px">Optional</span>' : ''}
+          </div>
+        </div>
+      `;
+    });
+
+    document.getElementById('holidays-list').innerHTML = html;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function addEmployee() {
+  const empData = {
+    emp_id: document.getElementById('emp-id').value,
+    name: document.getElementById('emp-name').value,
+    phone: document.getElementById('emp-phone').value,
+    email: document.getElementById('emp-email').value,
+    designation: document.getElementById('emp-designation').value
+  };
+
+  if (!empData.emp_id || !empData.name) {
+    alert('Fill required fields');
+    return;
+  }
+
+  try {
+    await supabaseClient
+      .from('employees')
+      .insert(empData);
+    alert('✅ Employee added');
+    closeModal('add-employee-modal');
+    loadEmployeesList();
+  } catch (err) {
+    alert('Error adding employee');
+    console.error(err);
+  }
+}
+
+async function addHoliday() {
+  const holiday = {
+    holiday_name: document.getElementById('holiday-name').value,
+    date: document.getElementById('holiday-date').value,
+    description: document.getElementById('holiday-desc').value,
+    is_restricted: document.getElementById('holiday-restricted').checked,
+    year: new Date().getFullYear()
+  };
+
+  if (!holiday.holiday_name || !holiday.date) {
+    alert('Fill required fields');
+    return;
+  }
+
+  try {
+    const { error } = await supabaseClient
+      .from('company_holidays')
+      .insert([holiday]);
+
+    if (error) throw error;
+
+    alert('✅ Holiday added');
+    document.getElementById('holiday-name').value = '';
+    document.getElementById('holiday-date').value = '';
+    document.getElementById('holiday-desc').value = '';
+    document.getElementById('holiday-restricted').checked = false;
+    closeModal('add-holiday-modal');
+    loadHolidaysList();
+  } catch (err) {
+    alert('Error adding holiday: ' + err.message);
+    console.error(err);
+  }
+}
+
+function openAddEmployeeModal() {
+  document.getElementById('add-employee-modal').classList.add('open');
+}
+
+function openAddHolidayModal() {
+  document.getElementById('add-holiday-modal').classList.add('open');
+}
+
+function openAddLeaveTypeModal() {
+  document.getElementById('add-leave-type-modal').classList.add('open');
+}
+
+async function addLeaveType() {
+  const name = document.getElementById('leave-type-name').value;
+  const days = parseInt(document.getElementById('leave-type-days').value);
+  const color = document.getElementById('leave-type-color').value;
+
+  if (!name || !days) {
+    alert('Please fill all fields');
+    return;
+  }
+
+  try {
+    const { error } = await supabaseClient
+      .from('leave_types')
+      .insert([{ name, days_per_year: days, color, is_active: true }]);
+
+    if (error) throw error;
+    alert('Leave type added!');
+    document.getElementById('leave-type-name').value = '';
+    document.getElementById('leave-type-days').value = '';
+    document.getElementById('leave-type-color').value = '#0066FF';
+    closeModal('add-leave-type-modal');
+    loadLeaveTypesList();
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+function openAddSalaryModal(empId) {
+  document.getElementById('salary-emp-id').value = empId;
+  document.getElementById('add-employee-salary-modal').classList.add('open');
+}
+
+async function saveSalary() {
+  const empId = document.getElementById('salary-emp-id').value;
+  const basic = parseFloat(document.getElementById('salary-basic').value) || 0;
+  const hra = parseFloat(document.getElementById('salary-hra').value) || 0;
+  const pf = parseFloat(document.getElementById('salary-pf').value) || 0;
+
+  if (!empId || !basic) {
+    alert('Please fill required fields');
+    return;
+  }
+
+  try {
+    const { error } = await supabaseClient
+      .from('employees')
+      .update({
+        basic_salary: basic,
+        hra: hra,
+        pf_deduction: pf
+      })
+      .eq('emp_id', empId);
+
+    if (error) throw error;
+    alert('Salary updated!');
+    closeModal('add-employee-salary-modal');
+    loadEmployeesList();
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+async function loadCompanyLogo() {
+  try {
+    const { data } = await supabaseClient
+      .from('company_settings')
+      .select('company_logo')
+      .limit(1)
+      .single();
+
+    if (data && data.company_logo) {
+      document.getElementById('company-logo-preview').src = data.company_logo;
+      document.getElementById('company-logo-preview').style.display = 'block';
+    }
+  } catch (err) {
+    console.log('No logo set yet');
+  }
+}
+
+async function uploadCompanyLogo() {
+  const file = document.getElementById('company-logo-input').files[0];
+  if (!file) return;
+
+  try {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result;
+
+      const { data: existing } = await supabaseClient
+        .from('company_settings')
+        .select('id')
+        .limit(1)
+        .single();
+
+      if (existing) {
+        await supabaseClient
+          .from('company_settings')
+          .update({ company_logo: base64 })
+          .eq('id', existing.id);
+      } else {
+        await supabaseClient
+          .from('company_settings')
+          .insert([{ company_logo: base64 }]);
+      }
+
+      document.getElementById('company-logo-preview').src = base64;
+      document.getElementById('company-logo-preview').style.display = 'block';
+      alert('✅ Logo uploaded successfully!');
+    };
+    reader.readAsDataURL(file);
+  } catch (err) {
+    alert('Error uploading logo: ' + err.message);
+  }
+}
+
+async function generateSalarySlip(empId, month, year) {
+  try {
+    const { data: emp } = await supabaseClient
+      .from('employees')
+      .select('*')
+      .eq('emp_id', empId)
+      .single();
+
+    const { data: settings } = await supabaseClient
+      .from('company_settings')
+      .select('*')
+      .limit(1)
+      .single();
+
+    if (!emp) {
+      alert('Employee not found');
+      return;
+    }
+
+    const basic = emp.basic_salary || 0;
+    const hra = emp.hra || 0;
+    const pf = emp.pf_deduction || 0;
+    const gross = basic + hra;
+    const net = gross - pf;
+
+    const html = `
+      <div style="font-family:Arial;max-width:800px;margin:0 auto;padding:20px;background:white;color:black">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:20px">
+          <div>
+            ${settings?.company_logo ? `<img src="${settings.company_logo}" style="max-width:100px;max-height:100px">` : '<h2>Company Logo</h2>'}
+          </div>
+          <div style="text-align:right">
+            <h1 style="margin:0">SALARY SLIP</h1>
+            <p style="margin:5px 0">Month: ${month}/${year}</p>
+          </div>
+        </div>
+
+        <table style="width:100%;margin-top:20px;border-collapse:collapse">
+          <tr>
+            <td style="padding:8px"><strong>Employee ID:</strong> ${emp.emp_id}</td>
+            <td style="padding:8px"><strong>Name:</strong> ${emp.name}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px"><strong>Designation:</strong> ${emp.designation || '—'}</td>
+            <td style="padding:8px"><strong>Department:</strong> ${emp.department || '—'}</td>
+          </tr>
+        </table>
+
+        <table style="width:100%;margin-top:30px;border-collapse:collapse;border:1px solid #000">
+          <thead>
+            <tr style="background:#f0f0f0">
+              <th style="padding:10px;text-align:left;border:1px solid #000">EARNINGS</th>
+              <th style="padding:10px;text-align:right;border:1px solid #000">AMOUNT</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:10px;border:1px solid #000">Basic Salary</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${basic}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px;border:1px solid #000">HRA</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${hra}</td>
+            </tr>
+            <tr style="background:#e8f4f8;font-weight:bold">
+              <td style="padding:10px;border:1px solid #000">Gross Salary</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${gross}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table style="width:100%;margin-top:20px;border-collapse:collapse;border:1px solid #000">
+          <thead>
+            <tr style="background:#f0f0f0">
+              <th style="padding:10px;text-align:left;border:1px solid #000">DEDUCTIONS</th>
+              <th style="padding:10px;text-align:right;border:1px solid #000">AMOUNT</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:10px;border:1px solid #000">PF Deduction</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${pf}</td>
+            </tr>
+            <tr style="background:#ffe8e8;font-weight:bold">
+              <td style="padding:10px;border:1px solid #000">Net Salary</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${net}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:40px;text-align:center;border-top:1px solid #000;padding-top:20px">
+          <p style="margin:5px">Generated: ${new Date().toLocaleDateString()}</p>
+          <p style="margin:5px;font-size:12px;color:#666">This is a computer generated slip. No signature required.</p>
+        </div>
+      </div>
+    `;
+
+    const printWindow = window.open('', '', 'width=900,height=700');
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.print();
+  } catch (err) {
+    alert('Error generating slip: ' + err.message);
+  }
+}
+
+async function downloadSalarySlip(empId, month, year) {
+  try {
+    const { data: emp } = await supabaseClient
+      .from('employees')
+      .select('*')
+      .eq('emp_id', empId)
+      .single();
+
+    if (!emp) {
+      alert('Employee not found');
+      return;
+    }
+
+    const basic = emp.basic_salary || 0;
+    const hra = emp.hra || 0;
+    const pf = emp.pf_deduction || 0;
+    const gross = basic + hra;
+    const net = gross - pf;
+
+    const csvContent = `
+SALARY SLIP - ${month}/${year}
+Employee ID: ${emp.emp_id}
+Name: ${emp.name}
+Designation: ${emp.designation || '—'}
+
+EARNINGS
+Basic Salary: ${basic}
+HRA: ${hra}
+Gross Salary: ${gross}
+
+DEDUCTIONS
+PF Deduction: ${pf}
+
+NET SALARY: ${net}
+
+Generated: ${new Date().toLocaleDateString()}
+    `;
+
+    const blob = new Blob([csvContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `salary_slip_${empId}_${month}_${year}.txt`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Error downloading: ' + err.message);
+  }
+}
+
+async function loadRegularizationRequests() {
+  try {
+    const { data } = await supabaseClient
+      .from('attendance_regularization')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!data || data.length === 0) {
+      document.getElementById('regularization-list').innerHTML =
+        '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">No pending requests</td></tr>';
+      return;
+    }
+
+    let html = '';
+    for (const req of data) {
+      const empData = await supabaseClient
+        .from('employees')
+        .select('name')
+        .eq('emp_id', req.emp_id)
+        .single();
+
+      const status = req.status === 'pending' ? '🟡 Pending' : req.status === 'approved' ? '✅ Approved' : '❌ Rejected';
+      const actionBtn = req.status === 'pending' ? `
+        <button class="btn-small" onclick="approveRegularization('${req.id}')">✅ Approve</button>
+        <button class="btn-small" style="background:#FF4D6A" onclick="rejectRegularization('${req.id}')">❌ Reject</button>
+      ` : '—';
+
+      html += `
+        <tr>
+          <td>${req.emp_id}</td>
+          <td>${empData.data?.name || '—'}</td>
+          <td>${req.date}</td>
+          <td style="font-size:12px">${req.reason || '—'}</td>
+          <td>${status}</td>
+          <td>${actionBtn}</td>
+        </tr>
+      `;
+    }
+    document.getElementById('regularization-list').innerHTML = html;
+  } catch (err) {
+    console.error(err);
+    document.getElementById('regularization-list').innerHTML =
+      '<tr><td colspan="6" style="text-align:center;color:#FF4D6A">Error loading requests</td></tr>';
+  }
+}
+
+async function approveRegularization(reqId) {
+  try {
+    const { error } = await supabaseClient
+      .from('attendance_regularization')
+      .update({ status: 'approved' })
+      .eq('id', reqId);
+
+    if (error) throw error;
+    alert('✅ Request approved!');
+    loadRegularizationRequests();
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+async function rejectRegularization(reqId) {
+  const reason = prompt('Enter rejection reason (optional):');
+  try {
+    const { error } = await supabaseClient
+      .from('attendance_regularization')
+      .update({ status: 'rejected', rejection_reason: reason })
+      .eq('id', reqId);
+
+    if (error) throw error;
+    alert('❌ Request rejected!');
+    loadRegularizationRequests();
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function switchReportTab(tab) {
+  document.getElementById('report-attendance').style.display = 'none';
+  document.getElementById('report-leave').style.display = 'none';
+  document.getElementById('report-late').style.display = 'none';
+  document.getElementById('report-salary').style.display = 'none';
+  document.getElementById(`report-${tab}`).style.display = 'block';
+
+  document.querySelectorAll('.tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  if (tab === 'salary') loadSalaryEmployeeList();
+}
+
+async function loadSalaryEmployeeList() {
+  try {
+    const { data } = await supabaseClient
+      .from('employees')
+      .select('emp_id, name')
+      .order('emp_id');
+
+    const select = document.getElementById('salary-emp-select');
+    select.innerHTML = '<option value="">-- Select Employee --</option>';
+
+    if (data) {
+      data.forEach(emp => {
+        const option = document.createElement('option');
+        option.value = emp.emp_id;
+        option.textContent = `${emp.emp_id} - ${emp.name}`;
+        select.appendChild(option);
+      });
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function handleSalarySlip(action) {
+  const empId = document.getElementById('salary-emp-select').value;
+  const monthStr = document.getElementById('salary-month').value;
+
+  if (!empId || !monthStr) {
+    alert('Please select employee and month');
+    return;
+  }
+
+  const [year, month] = monthStr.split('-');
+  const monthName = new Date(year, parseInt(month) - 1).toLocaleString('default', { month: 'long' });
+
+  if (action === 'print') {
+    generateSalarySlip(empId, monthName, year);
+  } else if (action === 'download') {
+    downloadSalarySlip(empId, monthName, year);
+  }
+}
+
+async function generateAttendanceReport() {
+  const month = document.getElementById('report-month').value;
+  if (!month) {
+    alert('Select month');
+    return;
+  }
+
+  try {
+    const [year, monthNum] = month.split('-');
+    const startDate = `${year}-${monthNum}-01`;
+    const endDate = new Date(year, monthNum, 0).toISOString().split('T')[0];
+
+    const { data } = await supabaseClient
+      .from('attendance_logs')
+      .select('*')
+      .gte('date', startDate)
+      .lte('date', endDate);
+
+    if (!data || data.length === 0) {
+      document.getElementById('attendance-report-content').innerHTML = 'No data';
+      return;
+    }
+
+    const empStats = {};
+    data.forEach(log => {
+      if (!empStats[log.emp_id]) {
+        empStats[log.emp_id] = { present: 0, absent: 0, late: 0, leave: 0 };
+      }
+      if (log.status === 'Present') empStats[log.emp_id].present++;
+      else if (log.status === 'Late') empStats[log.emp_id].late++;
+      else if (log.status === 'Absent') empStats[log.emp_id].absent++;
+      else if (log.status === 'Leave') empStats[log.emp_id].leave++;
+    });
+
+    let html = '<table class="table"><thead><tr><th>Emp ID</th><th>Present</th><th>Late</th><th>Absent</th><th>Leave</th></tr></thead><tbody>';
+    Object.entries(empStats).forEach(([empId, stats]) => {
+      html += `<tr><td>${empId}</td><td>${stats.present}</td><td>${stats.late}</td><td>${stats.absent}</td><td>${stats.leave}</td></tr>`;
+    });
+    html += '</tbody></table>';
+
+    document.getElementById('attendance-report-content').innerHTML = html;
+  } catch (err) {
+    alert('Error generating report');
+    console.error(err);
+  }
+}
+
+async function generateLeaveReport() {
+  try {
+    const { data } = await supabaseClient
+      .from('leave_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!data || data.length === 0) {
+      document.getElementById('leave-report-content').innerHTML = 'No leaves';
+      return;
+    }
+
+    let html = '<table class="table"><thead><tr><th>Emp</th><th>Days</th><th>Status</th><th>Period</th></tr></thead><tbody>';
+    data.forEach(req => {
+      html += `<tr><td>${req.emp_id}</td><td>${req.days}</td><td class="status-badge status-${req.status.toLowerCase()}">${req.status}</td><td>${req.from_date}</td></tr>`;
+    });
+    html += '</tbody></table>';
+
+    document.getElementById('leave-report-content').innerHTML = html;
+  } catch (err) {
+    alert('Error generating report');
+  }
+}
+
+async function generateLateReport() {
+  const month = document.getElementById('late-report-month').value;
+  if (!month) {
+    alert('Select month');
+    return;
+  }
+
+  try {
+    const [year, monthNum] = month.split('-');
+    const startDate = `${year}-${monthNum}-01`;
+    const endDate = new Date(year, monthNum, 0).toISOString().split('T')[0];
+
+    const { data } = await supabaseClient
+      .from('attendance_logs')
+      .select('*')
+      .eq('status', 'Late')
+      .gte('date', startDate)
+      .lte('date', endDate);
+
+    if (!data || data.length === 0) {
+      document.getElementById('late-report-content').innerHTML = 'No late arrivals';
+      return;
+    }
+
+    let html = '<table class="table"><thead><tr><th>Emp ID</th><th>Date</th><th>Clock In</th><th>Late After</th></tr></thead><tbody>';
+    data.forEach(log => {
+      html += `<tr><td>${log.emp_id}</td><td>${log.date}</td><td>${log.clock_in_time}</td><td>09:30</td></tr>`;
+    });
+    html += '</tbody></table>';
+
+    document.getElementById('late-report-content').innerHTML = html;
+  } catch (err) {
+    alert('Error generating report');
+  }
+}
+
+function toggleTheme() {
+  document.body.classList.toggle('light-mode');
+  const icon = document.getElementById('theme-icon');
+  icon.className = document.body.classList.contains('light-mode') ? 'ti ti-moon' : 'ti ti-sun';
+}
+
+window.addEventListener('load', async () => {
+  if (!await initSupabase()) return;
+  const admin = localStorage.getItem('admin_email');
+  if (admin) {
+    adminUser = { email: admin };
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-app').style.display = 'flex';
+    loadDashboard();
+  }
+});
+</script>
+</body>
+</html>
