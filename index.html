@@ -3177,11 +3177,6 @@ function signOut() {
 window.addEventListener('load', async () => {
   if (!await initSupabase()) return;
 
-  await loadCompanySettings();
-  await loadWorkSettings();
-  await loadLeaveTypes();
-  await loadLeaveBalance();
-
   const authEmpId = localStorage.getItem('auth_emp_id');
   if (authEmpId) {
     document.getElementById('login-screen').style.display = 'none';
@@ -3190,6 +3185,11 @@ window.addEventListener('load', async () => {
     startClock();
     setupPullToRefresh();
   }
+
+  loadCompanySettings().catch(e => console.error('Settings error:', e));
+  loadWorkSettings().catch(e => console.error('Work settings error:', e));
+  loadLeaveTypes().catch(e => console.error('Leave types error:', e));
+  loadLeaveBalance().catch(e => console.error('Leave balance error:', e));
 
   const theme = localStorage.getItem('theme_mode') || 'dark';
   if (theme === 'light') toggleTheme();
