@@ -497,7 +497,7 @@ body.light-mode {
 
 <div id="login-screen" style="display:flex;flex-direction:column;min-height:100vh;background:linear-gradient(135deg,var(--navy) 0%,#050812 100%);align-items:center;justify-content:center;padding:24px">
   <div style="text-align:center;margin-bottom:40px">
-    <img src="./hivu-logo.png" alt="Hivu" style="height:72px;width:auto;margin-bottom:8px;object-fit:contain">
+    <img src="../Hivu/hivu-logo.png" alt="Hivu" style="height:72px;width:auto;margin-bottom:8px;object-fit:contain">
     <div style="color:rgba(255,255,255,0.4);font-size:13px">Admin Dashboard</div>
   </div>
 
@@ -550,6 +550,9 @@ body.light-mode {
       </button>
       <button class="menu-item" onclick="switchSection('attendance-logs')">
         <i class="ti ti-clock"></i> Attendance Logs
+      </button>
+      <button class="menu-item" onclick="switchSection('payslip-generator')">
+        <i class="ti ti-receipt"></i> Payslip Generator
       </button>
       <button class="menu-item" onclick="switchSection('holidays')">
         <i class="ti ti-holiday"></i> Holidays
@@ -639,10 +642,23 @@ body.light-mode {
               <label class="form-label">Min Hours Per Day</label>
               <input type="number" class="form-input" id="set-min-hours" value="8" min="1" max="12">
             </div>
-            <div class="form-group">
-              <label class="form-label">Penalty Per Late Hour (₹)</label>
-              <input type="number" class="form-input" id="set-penalty" value="-100">
+
+            <div style="background:rgba(0,102,255,0.1);border:1px solid rgba(0,102,255,0.2);border-radius:8px;padding:12px;margin:16px 0">
+              <div style="font-weight:600;font-size:13px;color:var(--primary-light);margin-bottom:12px">⚡ Payslip Penalties (Percentage-based)</div>
+              <div class="form-group" style="margin-bottom:8px">
+                <label class="form-label">Penalty Per Late Hour (%)</label>
+                <input type="number" class="form-input" id="set-penalty-pct" value="2" min="0" max="100" step="0.5">
+              </div>
+              <div class="form-group" style="margin-bottom:8px">
+                <label class="form-label">Absent Penalty (%)</label>
+                <input type="number" class="form-input" id="set-absent-pct" value="5" min="0" max="100" step="0.5">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Short Day Deduction (%)</label>
+                <input type="number" class="form-input" id="set-shortday-pct" value="3" min="0" max="100" step="0.5">
+              </div>
             </div>
+
             <div class="form-group">
               <label class="form-label">Short Day Threshold (Hours)</label>
               <input type="number" class="form-input" id="set-short-day" value="6" min="1" max="12">
@@ -866,6 +882,30 @@ body.light-mode {
             <div style="display:flex;gap:10px">
               <button class="btn-submit" style="flex:1" onclick="handleSalarySlip('print')">🖨️ Print</button>
               <button class="btn-submit" style="flex:1;background:#FF9500" onclick="handleSalarySlip('download')">⬇️ Download</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAYSLIP GENERATOR SECTION -->
+      <div id="payslip-generator" class="section">
+        <div class="card">
+          <div class="card-title">
+            <span>Payslip Generator</span>
+            <button class="btn-add" onclick="generatePayslipPreview()">📊 Generate & Preview</button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Select Month</label>
+            <input type="month" class="form-input" id="payslip-month" value="2026-07">
+          </div>
+
+          <div id="payslip-preview-container" style="display:none;margin-top:20px">
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">📋 Payslip Preview - Click to Edit</div>
+            <div id="payslip-preview-list" style="max-height:600px;overflow-y:auto"></div>
+            <div style="display:flex;gap:10px;margin-top:16px">
+              <button class="btn-submit" style="flex:1" onclick="saveAllPayslips()">✅ Save & Generate</button>
+              <button class="btn-reject" style="flex:1;padding:10px 20px" onclick="clearPayslipPreview()">❌ Cancel</button>
             </div>
           </div>
         </div>
@@ -1159,6 +1199,7 @@ function switchSection(section) {
     regularization: 'Attendance Regularization',
     'leave-balance': 'Leave Balance',
     'attendance-logs': 'Attendance Logs',
+    'payslip-generator': 'Payslip Generator',
     holidays: 'Holidays',
     reports: 'Reports'
   };
@@ -1171,6 +1212,7 @@ function switchSection(section) {
   if (section === 'regularization') loadRegularizationRequests();
   if (section === 'leave-balance') loadLeaveBalanceList();
   if (section === 'attendance-logs') { loadAttendanceLogsList(); loadEmployeesForAttendance(); }
+  if (section === 'payslip-generator') clearPayslipPreview();
   if (section === 'holidays') loadHolidaysList();
 }
 
@@ -1269,7 +1311,9 @@ async function loadCompanySettings() {
       document.getElementById('set-work-end').value = data.work_end_time || '18:00';
       document.getElementById('set-late-after').value = data.late_after_time || '09:30';
       document.getElementById('set-min-hours').value = data.min_hours_per_day || 8;
-      document.getElementById('set-penalty').value = data.penalty_per_late_hour || -100;
+      document.getElementById('set-penalty-pct').value = data.penalty_per_late_pct || 2;
+      document.getElementById('set-absent-pct').value = data.absent_penalty_pct || 5;
+      document.getElementById('set-shortday-pct').value = data.shortday_penalty_pct || 3;
       document.getElementById('set-short-day').value = data.short_day_threshold || 6;
       document.getElementById('sat-off').checked = data.saturday_off !== false;
       document.getElementById('sun-off').checked = data.sunday_off !== false;
@@ -1285,7 +1329,9 @@ async function saveCompanySettings() {
     work_end_time: document.getElementById('set-work-end').value,
     late_after_time: document.getElementById('set-late-after').value,
     min_hours_per_day: parseInt(document.getElementById('set-min-hours').value),
-    penalty_per_late_hour: parseInt(document.getElementById('set-penalty').value),
+    penalty_per_late_pct: parseFloat(document.getElementById('set-penalty-pct').value),
+    absent_penalty_pct: parseFloat(document.getElementById('set-absent-pct').value),
+    shortday_penalty_pct: parseFloat(document.getElementById('set-shortday-pct').value),
     short_day_threshold: parseInt(document.getElementById('set-short-day').value)
   };
 
@@ -2402,6 +2448,175 @@ async function deleteAttendanceLog(logId) {
       alert('Error deleting attendance log: ' + err.message);
     }
   }
+}
+
+// Payslip Generator Functions
+async function generatePayslipPreview() {
+  const month = document.getElementById('payslip-month').value;
+  if (!month) { alert('Select a month'); return; }
+
+  try {
+    const [year, monthNum] = month.split('-');
+    const { data: employees } = await supabaseClient.from('employees').select('*');
+    const { data: settings } = await supabaseClient.from('company_settings').select('*').limit(1).single();
+
+    if (!employees || employees.length === 0) {
+      alert('No employees found');
+      return;
+    }
+
+    let previewHTML = '';
+    window.payslipData = [];
+
+    for (const emp of employees) {
+      const payslip = await calculatePayslip(emp, year, monthNum, settings);
+      window.payslipData.push({ ...payslip, emp_id: emp.emp_id, name: emp.name });
+
+      previewHTML += `
+        <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:16px;margin-bottom:12px">
+          <div style="font-weight:600;color:var(--text);margin-bottom:12px">${emp.name} (${emp.emp_id})</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
+            <div>
+              <div style="color:var(--muted);margin-bottom:4px">Basic Salary</div>
+              <input type="number" value="${payslip.basic}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'basic', this.value)">
+            </div>
+            <div>
+              <div style="color:var(--muted);margin-bottom:4px">HRA</div>
+              <input type="number" value="${payslip.hra}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'hra', this.value)">
+            </div>
+            <div>
+              <div style="color:var(--muted);margin-bottom:4px">Late Days</div>
+              <input type="number" value="${payslip.lateDays}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'lateDays', this.value)">
+            </div>
+            <div>
+              <div style="color:var(--muted);margin-bottom:4px">Absent Days</div>
+              <input type="number" value="${payslip.absentDays}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'absentDays', this.value)">
+            </div>
+            <div>
+              <div style="color:var(--muted);margin-bottom:4px">PF Deduction</div>
+              <input type="number" value="${payslip.pf}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'pf', this.value)">
+            </div>
+            <div>
+              <div style="color:var(--muted);margin-bottom:4px">Extra Adjustment</div>
+              <input type="number" value="0" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'adjustment', this.value)">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,102,255,0.1);font-size:12px">
+            <div>
+              <div style="color:var(--muted)">Gross</div>
+              <div style="font-size:16px;font-weight:600;color:var(--primary-light)">₹${Math.round(payslip.gross)}</div>
+            </div>
+            <div>
+              <div style="color:var(--muted)">Net Salary</div>
+              <div style="font-size:16px;font-weight:600;color:var(--green)">₹${Math.round(payslip.net)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    document.getElementById('payslip-preview-list').innerHTML = previewHTML;
+    document.getElementById('payslip-preview-container').style.display = 'block';
+
+  } catch (err) {
+    alert('Error generating payslips: ' + err.message);
+    console.error(err);
+  }
+}
+
+async function calculatePayslip(emp, year, month, settings) {
+  const monthStr = `${year}-${month.padStart(2, '0')}`;
+  const { data: logs } = await supabaseClient
+    .from('attendance_logs')
+    .select('*')
+    .eq('emp_id', emp.emp_id)
+    .gte('date', monthStr + '-01')
+    .lte('date', monthStr + '-31');
+
+  const penaltyPct = settings?.penalty_per_late_pct || 2;
+  const absentPct = settings?.absent_penalty_pct || 5;
+  const shortdayPct = settings?.shortday_penalty_pct || 3;
+
+  let presentDays = 0, lateDays = 0, absentDays = 0, shortDays = 0;
+
+  if (logs) {
+    logs.forEach(log => {
+      if (log.status === 'Present') presentDays++;
+      else if (log.status === 'Late') lateDays++;
+      else if (log.status === 'Absent') absentDays++;
+      else if (log.status === 'Short Day') shortDays++;
+    });
+  }
+
+  const basic = emp.basic_salary || 0;
+  const hra = emp.hra || 0;
+  const pf = emp.pf_deduction || 0;
+  const gross = basic + hra;
+
+  // Calculate deductions
+  const latePenalty = (basic / 30) * lateDays * (penaltyPct / 100);
+  const absentPenalty = (basic / 30) * absentDays * (absentPct / 100);
+  const shortDayPenalty = (basic / 30) * shortDays * (shortdayPct / 100);
+
+  const totalDeductions = pf + latePenalty + absentPenalty + shortDayPenalty;
+  const net = gross - totalDeductions;
+
+  return {
+    basic, hra, gross, pf, net,
+    presentDays, lateDays, absentDays, shortDays,
+    latePenalty, absentPenalty, shortDayPenalty,
+    month: monthStr
+  };
+}
+
+function updatePayslipData(empId, field, value) {
+  const payslip = window.payslipData.find(p => p.emp_id === empId);
+  if (payslip) {
+    payslip[field] = parseFloat(value);
+    // Recalculate net
+    const gross = (payslip.basic || 0) + (payslip.hra || 0);
+    const totalDed = (payslip.pf || 0) + (payslip.latePenalty || 0) + (payslip.absentPenalty || 0) + (parseFloat(payslip.adjustment) || 0);
+    payslip.gross = gross;
+    payslip.net = gross - totalDed;
+  }
+}
+
+async function saveAllPayslips() {
+  if (!window.payslipData || window.payslipData.length === 0) {
+    alert('No payslips to save');
+    return;
+  }
+
+  try {
+    for (const payslip of window.payslipData) {
+      await supabaseClient.from('payslips').insert([{
+        emp_id: payslip.emp_id,
+        month: payslip.month,
+        basic_salary: payslip.basic,
+        hra: payslip.hra,
+        gross_salary: payslip.gross,
+        pf_deduction: payslip.pf,
+        net_salary: payslip.net,
+        late_penalty: payslip.latePenalty,
+        absent_penalty: payslip.absentPenalty,
+        short_day_penalty: payslip.shortDayPenalty,
+        adjustment: payslip.adjustment || 0,
+        present_days: payslip.presentDays,
+        late_days: payslip.lateDays,
+        absent_days: payslip.absentDays
+      }]);
+    }
+    alert('✅ All payslips saved successfully!');
+    clearPayslipPreview();
+  } catch (err) {
+    alert('Error saving payslips: ' + err.message);
+  }
+}
+
+function clearPayslipPreview() {
+  document.getElementById('payslip-preview-container').style.display = 'none';
+  document.getElementById('payslip-preview-list').innerHTML = '';
+  window.payslipData = [];
 }
 
 window.addEventListener('load', async () => {
