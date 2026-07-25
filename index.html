@@ -1518,7 +1518,7 @@ body.light-mode .leaflet-tile {
 
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="login-screen">
-  <img src="../../../Hivu/hivu-logo.png" alt="Hivu" style="height:72px;width:auto;margin-bottom:8px;object-fit:contain">
+  <img src="./hivu-logo.png" alt="Hivu" style="height:72px;width:auto;margin-bottom:8px;object-fit:contain">
   <div class="login-tagline">Employee Portal</div>
   <div class="login-card" id="login-step-phone">
     <div class="login-card-title">Sign in</div>
@@ -1548,7 +1548,7 @@ body.light-mode .leaflet-tile {
 
   <!-- TOP BAR -->
   <div class="topbar">
-    <img src="../../../Hivu/hivu-logo.png" alt="Hivu" style="height:28px;width:auto;object-fit:contain">
+    <img src="./hivu-logo.png" alt="Hivu" style="height:28px;width:auto;object-fit:contain">
     <div class="topbar-actions">
       <button class="notif-btn" id="notif-btn" onclick="toggleNotifications()">
         <i class="ti ti-bell"></i>
@@ -2530,7 +2530,7 @@ function renderAttendanceLogs(logs) {
 
     return `
       <div class="log-item">
-        <div class="log-item-header" onclick="this.closest('.log-item').classList.toggle('expanded')">
+        <div class="log-item-header" onclick="event.stopPropagation(); this.closest('.log-item').classList.toggle('expanded')">
           <div>
             <div class="log-item-date">${dateStr}</div>
             <div class="log-item-summary">${dayLogs.length} entry(ies) · ${totalStr}</div>
