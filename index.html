@@ -1550,6 +1550,9 @@ body.light-mode .leaflet-tile {
   <div class="topbar">
     <img src="./hivu-logo.png" alt="Hivu" style="height:28px;width:auto;object-fit:contain">
     <div class="topbar-actions">
+      <button class="notif-btn" id="refresh-btn" onclick="refreshAttendanceData()" title="Refresh data">
+        <i class="ti ti-refresh"></i>
+      </button>
       <button class="notif-btn" id="notif-btn" onclick="toggleNotifications()">
         <i class="ti ti-bell"></i>
         <div class="notif-dot" id="notif-dot" style="display:none"></div>
@@ -2436,6 +2439,20 @@ async function calculateMissingAttendance(dateMap) {
     }
   } catch (err) {
     console.log('Absence calculation completed or no holidays found');
+  }
+}
+
+async function refreshAttendanceData() {
+  const empId = localStorage.getItem('auth_emp_id');
+  if (!empId) return;
+
+  const refreshBtn = document.getElementById('refresh-btn');
+  refreshBtn.style.opacity = '0.5';
+
+  try {
+    await loadAttendanceData();
+  } finally {
+    refreshBtn.style.opacity = '1';
   }
 }
 
