@@ -2144,9 +2144,15 @@ async function restoreClockState() {
         STATE.displayClockInTime = latestRecord.clock_in_time;
 
         const inTime = new Date();
-        const timeParts = latestRecord.clock_in_time.match(/(\d{1,2}):(\d{2}):(\d{2})/);
-        if (timeParts) {
-          const [, h, m, s] = timeParts.map(x => parseInt(x));
+        const timeMatch = latestRecord.clock_in_time.match(/(\d{1,2}):(\d{2}):(\d{2})\s*(am|pm)/i);
+        if (timeMatch) {
+          let [, h, m, s, ampm] = timeMatch;
+          h = parseInt(h);
+          m = parseInt(m);
+          s = parseInt(s);
+          // Convert 12-hour to 24-hour
+          if (ampm.toLowerCase() === 'pm' && h !== 12) h += 12;
+          if (ampm.toLowerCase() === 'am' && h === 12) h = 0;
           inTime.setHours(h, m, s);
           STATE.clockInTime = inTime.getTime();
         }
