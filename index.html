@@ -2398,19 +2398,30 @@ async function calculateMissingAttendance(dateMap) {
     const satOff = weekendSettings?.saturday_off ?? true;
     const sunOff = weekendSettings?.sunday_off ?? true;
 
+    const weekendDates = [];
     const missingDates = [];
 
     for (let d = new Date(firstDay); d <= lastDay && d <= today; d.setDate(d.getDate() + 1)) {
       const dateStr = d.toISOString().split('T')[0];
       const dayOfWeek = d.getDay();
+      const isWeekend = (dayOfWeek === 0 && sunOff) || (dayOfWeek === 6 && satOff);
+      const isHoliday = holidaySet.has(dateStr);
 
-      if (!dateMap[dateStr]) {
-        const isWeekend = (dayOfWeek === 0 && sunOff) || (dayOfWeek === 6 && satOff);
-        const isHoliday = holidaySet.has(dateStr);
+      if (isWeekend) {
+        weekendDates.push(dateStr);
+      } else if (!dateMap[dateStr] && !isHoliday) {
+        missingDates.push(dateStr);
+      }
+    }
 
-        if (!isWeekend && !isHoliday) {
-          missingDates.push(dateStr);
-        }
+    if (weekendDates.length > 0) {
+      for (const dateStr of weekendDates) {
+        await supabaseClient
+          .from('attendance_logs')
+          .delete()
+          .eq('emp_id', empId)
+          .eq('date', dateStr)
+          .eq('status', 'Absent');
       }
     }
 
