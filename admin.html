@@ -1373,6 +1373,44 @@ body.light-mode {
       <label class="form-label">Work Anniversary</label>
       <input type="date" class="form-input" id="edit-emp-anniversary">
     </div>
+
+    <div style="padding:12px;background:rgba(0,102,255,0.05);border-radius:8px;margin:16px 0;border-left:3px solid var(--primary)">
+      <div style="font-weight:600;color:var(--text);margin-bottom:12px">💰 Salary Details</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="form-group">
+          <label class="form-label">Basic Salary (₹)</label>
+          <input type="number" class="form-input" id="edit-emp-basic" placeholder="50000" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">HRA (₹)</label>
+          <input type="number" class="form-input" id="edit-emp-hra" placeholder="20000" min="0">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="form-group">
+          <label class="form-label">DA (₹)</label>
+          <input type="number" class="form-input" id="edit-emp-da" placeholder="25000" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Other Allowances (₹)</label>
+          <input type="number" class="form-input" id="edit-emp-allowances" placeholder="0" min="0">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">PF Deduction (₹)</label>
+          <input type="number" class="form-input" id="edit-emp-pf" placeholder="6000" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ESI Deduction (₹)</label>
+          <input type="number" class="form-input" id="edit-emp-esi" placeholder="0" min="0">
+        </div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:10px">
       <button class="btn-submit" style="flex:1" onclick="updateEmployee()">Save Changes</button>
       <button class="btn-reject" style="flex:1;padding:10px 20px" onclick="deleteEmployee(document.getElementById('edit-emp-id').value)">Delete Employee</button>
@@ -2446,6 +2484,15 @@ async function openEditEmployeeModal(empId) {
       document.getElementById('edit-emp-department').value = emp.department || '';
       document.getElementById('edit-emp-dob').value = emp.dob || '';
       document.getElementById('edit-emp-anniversary').value = emp.work_anniversary || '';
+
+      // Load salary details
+      document.getElementById('edit-emp-basic').value = emp.basic_salary || '';
+      document.getElementById('edit-emp-hra').value = emp.hra || '';
+      document.getElementById('edit-emp-da').value = emp.da || '';
+      document.getElementById('edit-emp-allowances').value = emp.other_allowances || '';
+      document.getElementById('edit-emp-pf').value = emp.pf_deduction || '';
+      document.getElementById('edit-emp-esi').value = emp.esi_deduction || '';
+
       document.getElementById('edit-employee-modal').classList.add('open');
     }
   } catch (err) {
@@ -2456,6 +2503,22 @@ async function openEditEmployeeModal(empId) {
 
 async function updateEmployee() {
   const empId = document.getElementById('edit-emp-id').value;
+  const basic = parseFloat(document.getElementById('edit-emp-basic').value) || 0;
+  const hra = parseFloat(document.getElementById('edit-emp-hra').value) || 0;
+  const da = parseFloat(document.getElementById('edit-emp-da').value) || 0;
+  const pf = parseFloat(document.getElementById('edit-emp-pf').value) || 0;
+
+  // Validate salary fields
+  if (basic < 0 || hra < 0 || da < 0 || pf < 0) {
+    alert('Salary values cannot be negative');
+    return;
+  }
+
+  if (pf > 50000) {
+    alert('PF cannot exceed ₹50,000 per month (legal limit)');
+    return;
+  }
+
   const empData = {
     name: document.getElementById('edit-emp-name').value,
     email: document.getElementById('edit-emp-email').value,
@@ -2463,7 +2526,14 @@ async function updateEmployee() {
     designation: document.getElementById('edit-emp-designation').value,
     department: document.getElementById('edit-emp-department').value,
     dob: document.getElementById('edit-emp-dob').value || null,
-    work_anniversary: document.getElementById('edit-emp-anniversary').value || null
+    work_anniversary: document.getElementById('edit-emp-anniversary').value || null,
+    // Salary details
+    basic_salary: basic,
+    hra: hra,
+    da: da,
+    other_allowances: parseFloat(document.getElementById('edit-emp-allowances').value) || 0,
+    pf_deduction: pf,
+    esi_deduction: parseFloat(document.getElementById('edit-emp-esi').value) || 0
   };
 
   if (!empData.name) {
@@ -2478,7 +2548,7 @@ async function updateEmployee() {
       .eq('emp_id', empId);
 
     if (error) throw error;
-    alert('✅ Employee updated');
+    alert('✅ Employee updated with salary details');
     closeModal('edit-employee-modal');
     loadEmployeesList();
   } catch (err) {
