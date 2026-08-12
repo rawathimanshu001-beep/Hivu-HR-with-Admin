@@ -3202,19 +3202,22 @@ function updateLeafletMap(userLat, userLng) {
 }
 
 function startClock() {
-  setInterval(() => {
+  if (STATE.clockInterval) clearInterval(STATE.clockInterval);
+  STATE.clockInterval = setInterval(() => {
     const now = new Date();
-    document.getElementById('clock-time').textContent =
-      now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
-    document.getElementById('clock-date').textContent =
-      now.toLocaleDateString('en-IN', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+    const timeEl = document.getElementById('clock-time');
+    const dateEl = document.getElementById('clock-date');
+    const elapsedEl = document.getElementById('elapsed-time');
 
-    if (STATE.clockedIn && STATE.clockInTime) {
+    if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+    if (dateEl) dateEl.textContent = now.toLocaleDateString('en-IN', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+    if (STATE.clockedIn && STATE.clockInTime && elapsedEl) {
       const elapsed = Date.now() - STATE.clockInTime;
       const hours = Math.floor(elapsed / 3600000);
       const mins = Math.floor((elapsed % 3600000) / 60000);
       const secs = Math.floor((elapsed % 60000) / 1000);
-      document.getElementById('elapsed-time').textContent = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      elapsedEl.textContent = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
   }, 1000);
 }

@@ -1691,11 +1691,32 @@ function adminLogout() {
   document.getElementById('admin-password').value = '';
 }
 
-function switchSection(section) {
+// XSS Protection - Escape HTML and Attributes
+function escapeHtml(text) {
+  if (!text) return '';
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return String(text).replace(/[&<>"']/g, char => map[char]);
+}
+
+function escapeAttr(text) {
+  if (!text) return '';
+  return String(text).replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function switchSection(section, target) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById(section).classList.add('active');
   document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-  event.target.closest('.menu-item').classList.add('active');
+  if (target) {
+    const menuItem = target.closest?.('.menu-item') || target;
+    if (menuItem) menuItem.classList.add('active');
+  }
 
   const titles = {
     dashboard: 'Dashboard',
@@ -1891,18 +1912,50 @@ async function loadCompanySettings() {
 }
 
 async function saveCompanySettings() {
+  // Validate numeric inputs
+  const lat = parseFloat(document.getElementById('set-office-lat').value);
+  const lng = parseFloat(document.getElementById('set-office-lng').value);
+  const minHours = parseInt(document.getElementById('set-min-hours').value);
+  const radius = parseInt(document.getElementById('set-office-radius').value);
+  const penalty = parseFloat(document.getElementById('set-penalty-pct').value);
+  const absentPenalty = parseFloat(document.getElementById('set-absent-pct').value);
+  const shortdayPenalty = parseFloat(document.getElementById('set-shortday-pct').value);
+  const shortdayThreshold = parseInt(document.getElementById('set-short-day').value);
+
+  // Validate coordinates
+  if (isNaN(lat) || lat < -90 || lat > 90) {
+    alert('Invalid latitude (must be between -90 and 90)');
+    return;
+  }
+  if (isNaN(lng) || lng < -180 || lng > 180) {
+    alert('Invalid longitude (must be between -180 and 180)');
+    return;
+  }
+  if (isNaN(minHours) || minHours < 1 || minHours > 24) {
+    alert('Invalid minimum hours (must be between 1 and 24)');
+    return;
+  }
+  if (isNaN(radius) || radius < 10 || radius > 10000) {
+    alert('Invalid radius (must be between 10 and 10000 meters)');
+    return;
+  }
+  if (isNaN(penalty) || penalty < 0 || penalty > 100) {
+    alert('Invalid penalty percentage (must be between 0 and 100)');
+    return;
+  }
+
   const settings = {
     work_start_time: document.getElementById('set-work-start').value,
     work_end_time: document.getElementById('set-work-end').value,
     late_after_time: document.getElementById('set-late-after').value,
-    min_hours_per_day: parseInt(document.getElementById('set-min-hours').value),
-    penalty_per_late_pct: parseFloat(document.getElementById('set-penalty-pct').value),
-    absent_penalty_pct: parseFloat(document.getElementById('set-absent-pct').value),
-    shortday_penalty_pct: parseFloat(document.getElementById('set-shortday-pct').value),
-    short_day_threshold: parseInt(document.getElementById('set-short-day').value),
-    office_lat: parseFloat(document.getElementById('set-office-lat').value),
-    office_lng: parseFloat(document.getElementById('set-office-lng').value),
-    office_radius: parseInt(document.getElementById('set-office-radius').value)
+    min_hours_per_day: minHours,
+    penalty_per_late_pct: penalty,
+    absent_penalty_pct: absentPenalty,
+    shortday_penalty_pct: shortdayPenalty,
+    short_day_threshold: shortdayThreshold,
+    office_lat: lat,
+    office_lng: lng,
+    office_radius: radius
   };
 
   try {
@@ -2018,13 +2071,13 @@ async function loadEmployeesList() {
       html += `
         <tr>
           <td>${emp.emp_id}</td>
-          <td>${emp.name}</td>
-          <td>${emp.email || '—'}</td>
-          <td>${emp.designation || '—'}</td>
+          <td>${escapeHtml(emp.name)}</td>
+          <td>${escapeHtml(emp.email || '—')}</td>
+          <td>${escapeHtml(emp.designation || '—')}</td>
           <td>₹${emp.basic_salary ? emp.basic_salary.toLocaleString('en-IN') : 0}</td>
           <td>
-            <button class="btn-approve" style="margin-right:4px" onclick="openEditEmployeeModal('${emp.emp_id}')">✏️ Edit</button>
-            <button class="btn-reject" onclick="confirmDeleteEmployee('${emp.emp_id}', '${emp.name}')">🗑️ Delete</button>
+            <button class="btn-approve" style="margin-right:4px" data-emp-id="${escapeAttr(emp.emp_id)}" onclick="openEditEmployeeModal(this.dataset.empId)">✏️ Edit</button>
+            <button class="btn-reject" data-emp-id="${escapeAttr(emp.emp_id)}" data-emp-name="${escapeAttr(emp.name)}" onclick="confirmDeleteEmployee(this.dataset.empId, this.dataset.empName)">🗑️ Delete</button>
           </td>
         </tr>
       `;
@@ -2057,18 +2110,18 @@ async function loadLeaveRequests() {
         <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)">EMP ${req.emp_id}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">EMP ${escapeHtml(req.emp_id)}</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px">${req.days} days • ${req.from_date} to ${req.to_date}</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:4px">${req.reason}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:4px">${escapeHtml(req.reason || 'N/A')}</div>
             </div>
             <div style="text-align:right">
               <span class="status-badge ${statusClass}">${req.status}</span>
               <div style="margin-top:6px;display:flex;gap:4px;font-size:0">
                 ${req.status === 'Pending' ? `
-                  <button class="btn-approve" style="font-size:11px" onclick="approveLeave('${req.id}')">Approve</button>
-                  <button class="btn-reject" style="font-size:11px" onclick="rejectLeave('${req.id}')">Reject</button>
+                  <button class="btn-approve" style="font-size:11px" data-req-id="${escapeAttr(req.id)}" onclick="approveLeave(this.dataset.reqId)">Approve</button>
+                  <button class="btn-reject" style="font-size:11px" data-req-id="${escapeAttr(req.id)}" onclick="rejectLeave(this.dataset.reqId)">Reject</button>
                 ` : `
-                  <button class="btn-submit" style="font-size:11px;padding:6px 12px;width:auto" onclick="editLeaveModal('${req.id}')">✏️ Edit</button>
+                  <button class="btn-submit" style="font-size:11px;padding:6px 12px;width:auto" data-req-id="${escapeAttr(req.id)}" onclick="editLeaveModal(this.dataset.reqId)">✏️ Edit</button>
                 `}
               </div>
             </div>
