@@ -2905,7 +2905,7 @@ async function loadRegularizationRequests() {
   try {
     const { data } = await supabaseClient
       .from('attendance_regularization')
-      .select('*')
+      .select('*, emp_id(*)')
       .order('created_at', { ascending: false });
 
     if (!data || data.length === 0) {
@@ -2916,22 +2916,17 @@ async function loadRegularizationRequests() {
 
     let html = '';
     for (const req of data) {
-      const empData = await supabaseClient
-        .from('employees')
-        .select('name')
-        .eq('emp_id', req.emp_id)
-        .single();
-
+      const empName = req.emp_id?.name || '—';
       const status = req.status === 'pending' ? '🟡 Pending' : req.status === 'approved' ? '✅ Approved' : '❌ Rejected';
       const actionBtn = req.status === 'pending' ? `
-        <button class="btn-small" onclick="approveRegularization('${req.id}')">✅ Approve</button>
-        <button class="btn-small" style="background:#FF4D6A" onclick="rejectRegularization('${req.id}')">❌ Reject</button>
+        <button class="btn-small" data-req-id="${escapeAttr(req.id)}" onclick="approveRegularization(this.dataset.reqId)">✅ Approve</button>
+        <button class="btn-small" style="background:#FF4D6A" data-req-id="${escapeAttr(req.id)}" onclick="rejectRegularization(this.dataset.reqId)">❌ Reject</button>
       ` : '—';
 
       html += `
         <tr>
-          <td>${req.emp_id}</td>
-          <td>${empData.data?.name || '—'}</td>
+          <td>${escapeHtml(req.emp_id)}</td>
+          <td>${escapeHtml(empName)}</td>
           <td>${req.date}</td>
           <td style="font-size:12px">${req.reason || '—'}</td>
           <td>${status}</td>
@@ -3529,12 +3524,16 @@ async function generatePayslipPreview() {
 
 async function calculatePayslip(emp, year, month, settings) {
   const monthStr = `${year}-${month.padStart(2, '0')}`;
+  const monthNum = parseInt(month);
+  const lastDay = new Date(year, monthNum, 0).getDate(); // Get actual last day of month
+  const lastDateStr = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
+
   const { data: logs } = await supabaseClient
     .from('attendance_logs')
     .select('*')
     .eq('emp_id', emp.emp_id)
     .gte('date', monthStr + '-01')
-    .lte('date', monthStr + '-31');
+    .lte('date', lastDateStr);
 
   const { data: leaves } = await supabaseClient
     .from('leave_requests')
@@ -3542,7 +3541,7 @@ async function calculatePayslip(emp, year, month, settings) {
     .eq('emp_id', emp.emp_id)
     .eq('status', 'Approved')
     .gte('from_date', monthStr + '-01')
-    .lte('to_date', monthStr + '-31');
+    .lte('to_date', lastDateStr);
 
   const penaltyPct = settings?.penalty_per_late_pct || 2;
   const absentPct = settings?.absent_penalty_pct || 5;
