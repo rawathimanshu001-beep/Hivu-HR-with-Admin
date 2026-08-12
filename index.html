@@ -2477,8 +2477,23 @@ async function initSupabase() {
 
 async function sendOTP() {
   const phone = document.getElementById('phone-input').value.trim();
+
+  // Validate phone number
   if (!phone) {
     showToast('Enter phone number');
+    return;
+  }
+
+  // Remove spaces and check if it's valid
+  const phoneDigits = phone.replace(/\D/g, '');
+  if (phoneDigits.length < 10 || phoneDigits.length > 12) {
+    showToast('Invalid phone number (10-12 digits required)');
+    return;
+  }
+
+  // Check if it starts with valid country code for India or just digits
+  if (!phoneDigits.match(/^(\+91|91)?[6-9]\d{9}$/)) {
+    showToast('Invalid Indian phone number');
     return;
   }
 
@@ -2610,8 +2625,13 @@ async function restoreClockState() {
         document.getElementById('clock-btn').innerHTML = '<i class="ti ti-player-stop"></i> <span id="clock-btn-txt">Clock Out</span>';
 
         document.getElementById('loc-label').textContent = 'Location verified ✓';
-        if (latestRecord.clock_in_lat && latestRecord.clock_in_lng) {
-          document.getElementById('loc-coords').textContent = `${latestRecord.clock_in_lat.toFixed(4)}°N, ${latestRecord.clock_in_lng.toFixed(4)}°E`;
+        const coordsEl = document.getElementById('loc-coords');
+        if (latestRecord.clock_in_lat && latestRecord.clock_in_lng && coordsEl) {
+          const lat = parseFloat(latestRecord.clock_in_lat);
+          const lng = parseFloat(latestRecord.clock_in_lng);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            coordsEl.textContent = `${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`;
+          }
         }
       } else if (latestRecord.clock_in_time && latestRecord.clock_out_time) {
         STATE.displayClockInTime = latestRecord.clock_in_time;
@@ -3783,14 +3803,26 @@ async function submitLeave() {
   const toDate = document.getElementById('leave-to').value;
   const reason = document.getElementById('leave-reason').value;
 
-  if (!leaveTypeId || !fromDate) {
+  if (!leaveTypeId || !fromDate || !toDate) {
     showToast('Fill all required fields');
     return;
   }
 
+  // Validate date range
+  const from = new Date(fromDate);
+  const to = new Date(toDate);
+
+  if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+    showToast('Invalid date format');
+    return;
+  }
+
+  if (to < from) {
+    showToast('End date cannot be before start date');
+    return;
+  }
+
   try {
-    const from = new Date(fromDate);
-    const to = new Date(toDate || fromDate);
     const days = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
 
     const { error } = await supabaseClient
@@ -4073,6 +4105,20 @@ async function uploadProfilePhoto(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    showToast('Only JPEG, PNG, or WebP images allowed');
+    return;
+  }
+
+  // Validate file size (max 2MB)
+  const maxSize = 2 * 1024 * 1024;
+  if (file.size > maxSize) {
+    showToast('File size must be less than 2MB');
+    return;
+  }
+
   const empId = localStorage.getItem('auth_emp_id');
   if (!empId) {
     showToast('Error: Not logged in');
@@ -4081,8 +4127,15 @@ async function uploadProfilePhoto(event) {
 
   try {
     const reader = new FileReader();
+    reader.onerror = () => {
+      showToast('Error reading file');
+    };
     reader.onload = async (e) => {
-      const photoUrl = e.target.result;
+      const photoUrl = e.target?.result;
+      if (!photoUrl) {
+        showToast('Error processing image');
+        return;
+      }
 
       const { error: updateError } = await supabaseClient
         .from('employees')
