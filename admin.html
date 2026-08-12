@@ -1409,6 +1409,11 @@ body.light-mode {
           <input type="number" class="form-input" id="edit-emp-esi" placeholder="0" min="0">
         </div>
       </div>
+
+      <div class="form-group">
+        <label class="form-label">Insurance Deduction (₹)</label>
+        <input type="number" class="form-input" id="edit-emp-insurance" placeholder="0" min="0">
+      </div>
     </div>
 
     <div style="display:flex;gap:10px">
@@ -2492,6 +2497,7 @@ async function openEditEmployeeModal(empId) {
       document.getElementById('edit-emp-allowances').value = emp.other_allowances || '';
       document.getElementById('edit-emp-pf').value = emp.pf_deduction || '';
       document.getElementById('edit-emp-esi').value = emp.esi_deduction || '';
+      document.getElementById('edit-emp-insurance').value = emp.insurance_deduction || '';
 
       document.getElementById('edit-employee-modal').classList.add('open');
     }
@@ -2507,9 +2513,11 @@ async function updateEmployee() {
   const hra = parseFloat(document.getElementById('edit-emp-hra').value) || 0;
   const da = parseFloat(document.getElementById('edit-emp-da').value) || 0;
   const pf = parseFloat(document.getElementById('edit-emp-pf').value) || 0;
+  const esi = parseFloat(document.getElementById('edit-emp-esi').value) || 0;
+  const insurance = parseFloat(document.getElementById('edit-emp-insurance').value) || 0;
 
   // Validate salary fields
-  if (basic < 0 || hra < 0 || da < 0 || pf < 0) {
+  if (basic < 0 || hra < 0 || da < 0 || pf < 0 || esi < 0 || insurance < 0) {
     alert('Salary values cannot be negative');
     return;
   }
@@ -2533,7 +2541,8 @@ async function updateEmployee() {
     da: da,
     other_allowances: parseFloat(document.getElementById('edit-emp-allowances').value) || 0,
     pf_deduction: pf,
-    esi_deduction: parseFloat(document.getElementById('edit-emp-esi').value) || 0
+    esi_deduction: esi,
+    insurance_deduction: insurance
   };
 
   if (!empData.name) {
@@ -3572,8 +3581,8 @@ async function generatePayslipPreview() {
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;margin-top:8px">
-            <div><div style="color:var(--muted);margin-bottom:4px">Professional Tax</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.professionalTax)}</div></div>
-            <div><div style="color:var(--muted);margin-bottom:4px">TDS</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.tds)}</div></div>
+            <div><div style="color:var(--muted);margin-bottom:4px">ESI</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.esi)}</div></div>
+            <div><div style="color:var(--muted);margin-bottom:4px">Insurance</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.insurance)}</div></div>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;margin-top:8px">
@@ -3658,22 +3667,19 @@ async function calculatePayslip(emp, year, month, settings) {
   // Deductions
   const pf = Math.min(emp.pf_deduction || (basic * 0.12), 50000 / 12); // 12% PF, max ₹50k/month
   const esi = emp.esi_deduction || 0; // ESI if applicable
-  const professionalTax = calculateProfessionalTax(grossSalary, settings); // State-specific
+  const insurance = emp.insurance_deduction || 0; // Group Insurance
 
   // Attendance-based deductions
   const latePenalty = (salaryPerDay * lateDays * (penaltyPct / 100));
   const absentPenalty = (salaryPerDay * absentDays * (absentPct / 100));
   const shortDayPenalty = (salaryPerDay * shortDays * (shortdayPct / 100));
 
-  // TDS Calculation (Simplified - based on annual calculation)
-  const tds = calculateTDS(grossSalary - (pf + esi + professionalTax));
-
-  const totalDeductions = pf + esi + professionalTax + latePenalty + absentPenalty + shortDayPenalty + tds;
+  const totalDeductions = pf + esi + insurance + latePenalty + absentPenalty + shortDayPenalty;
   const netSalary = grossSalary - totalDeductions;
 
   return {
     basic, hra, da, allowances, grossSalary,
-    pf, esi, professionalTax, tds,
+    pf, esi, insurance,
     presentDays, lateDays, absentDays, shortDays, leaveDays,
     latePenalty, absentPenalty, shortDayPenalty,
     totalDeductions, netSalary,
@@ -3681,29 +3687,6 @@ async function calculatePayslip(emp, year, month, settings) {
   };
 }
 
-function calculateProfessionalTax(grossSalary, settings) {
-  // Indian Professional Tax varies by state
-  // Maharashtra: 0-5000, 5000-10000, above 10000
-  if (grossSalary < 5000) return 0;
-  else if (grossSalary < 10000) return 150;
-  else return 200; // Typical range, adjust based on employee state
-}
-
-function calculateTDS(taxableIncome) {
-  // FY 2026-27 Indian Tax Slabs (Resident Individual)
-  // This is simplified monthly calculation
-  let monthlyTax = 0;
-  const annualIncome = taxableIncome * 12;
-
-  if (annualIncome <= 300000) monthlyTax = 0;
-  else if (annualIncome <= 700000) monthlyTax = ((annualIncome - 300000) * 0.05) / 12;
-  else if (annualIncome <= 1000000) monthlyTax = ((400000 * 0.05) + ((annualIncome - 700000) * 0.20)) / 12;
-  else if (annualIncome <= 1200000) monthlyTax = ((400000 * 0.05) + (300000 * 0.20) + ((annualIncome - 1000000) * 0.30)) / 12;
-  else monthlyTax = ((400000 * 0.05) + (300000 * 0.20) + (200000 * 0.30) + ((annualIncome - 1200000) * 0.45)) / 12;
-
-  // Add Health and Education cess (4% on TDS)
-  return Math.round(monthlyTax + (monthlyTax * 0.04));
-}
 
 function updatePayslipData(empId, field, value) {
   const payslip = window.payslipData.find(p => p.emp_id === empId);
@@ -3730,13 +3713,15 @@ async function saveAllPayslips() {
         month: payslip.month,
         basic_salary: payslip.basic,
         hra: payslip.hra,
-        gross_salary: payslip.gross,
+        gross_salary: payslip.grossSalary,
         pf_deduction: payslip.pf,
-        net_salary: payslip.net,
+        esi_deduction: payslip.esi,
+        insurance_deduction: payslip.insurance,
+        net_salary: payslip.netSalary,
         late_penalty: payslip.latePenalty,
         absent_penalty: payslip.absentPenalty,
         short_day_penalty: payslip.shortDayPenalty,
-        adjustment: payslip.adjustment || 0,
+        total_deductions: payslip.totalDeductions,
         present_days: payslip.presentDays,
         late_days: payslip.lateDays,
         absent_days: payslip.absentDays
