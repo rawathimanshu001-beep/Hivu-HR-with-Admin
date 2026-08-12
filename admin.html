@@ -3477,41 +3477,41 @@ async function generatePayslipPreview() {
 
       previewHTML += `
         <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:16px;margin-bottom:12px">
-          <div style="font-weight:600;color:var(--text);margin-bottom:12px">${emp.name} (${emp.emp_id})</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
-            <div>
-              <div style="color:var(--muted);margin-bottom:4px">Basic Salary</div>
-              <input type="number" value="${payslip.basic}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'basic', this.value)">
-            </div>
-            <div>
-              <div style="color:var(--muted);margin-bottom:4px">HRA</div>
-              <input type="number" value="${payslip.hra}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'hra', this.value)">
-            </div>
-            <div>
-              <div style="color:var(--muted);margin-bottom:4px">Late Days</div>
-              <input type="number" value="${payslip.lateDays}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'lateDays', this.value)">
-            </div>
-            <div>
-              <div style="color:var(--muted);margin-bottom:4px">Absent Days</div>
-              <input type="number" value="${payslip.absentDays}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'absentDays', this.value)">
-            </div>
-            <div>
-              <div style="color:var(--muted);margin-bottom:4px">PF Deduction</div>
-              <input type="number" value="${payslip.pf}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'pf', this.value)">
-            </div>
-            <div>
-              <div style="color:var(--muted);margin-bottom:4px">Extra Adjustment</div>
-              <input type="number" value="0" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-family:monospace" onchange="updatePayslipData('${emp.emp_id}', 'adjustment', this.value)">
-            </div>
+          <div style="font-weight:600;color:var(--text);margin-bottom:12px">${escapeHtml(emp.name)} (${escapeHtml(emp.emp_id)})</div>
+
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:8px;background:rgba(0,102,255,0.05);border-radius:4px">
+            Present: ${payslip.presentDays} | Late: ${payslip.lateDays} | Absent: ${payslip.absentDays} | Leave: ${payslip.leaveDays}
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,102,255,0.1);font-size:12px">
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px;margin-bottom:12px;padding:8px;background:rgba(0,102,255,0.05);border-radius:4px">
+            <div><div style="color:var(--muted)">Basic</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.basic)}</div></div>
+            <div><div style="color:var(--muted)">HRA</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.hra)}</div></div>
+            <div><div style="color:var(--muted)">DA</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.da)}</div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
+            <div><div style="color:var(--muted);margin-bottom:4px">Gross Salary</div><div style="font-size:14px;font-weight:600;color:var(--primary-light)">₹${Math.round(payslip.grossSalary)}</div></div>
+            <div><div style="color:var(--muted);margin-bottom:4px">PF (12%)</div><input type="number" value="${Math.round(payslip.pf)}" style="width:100%;padding:6px;background:var(--surface);border:1px solid rgba(0,102,255,0.15);border-radius:4px;color:var(--text);font-size:12px" onchange="updatePayslipData('${escapeAttr(emp.emp_id)}', 'pf', this.value)"></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;margin-top:8px">
+            <div><div style="color:var(--muted);margin-bottom:4px">Professional Tax</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.professionalTax)}</div></div>
+            <div><div style="color:var(--muted);margin-bottom:4px">TDS</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.tds)}</div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;margin-top:8px">
+            <div><div style="color:var(--muted);margin-bottom:4px">Late Penalty</div><div style="font-weight:600;color:var(--red)">-₹${Math.round(payslip.latePenalty)}</div></div>
+            <div><div style="color:var(--muted);margin-bottom:4px">Absent Penalty</div><div style="font-weight:600;color:var(--red)">-₹${Math.round(payslip.absentPenalty)}</div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,102,255,0.1);font-size:13px">
             <div>
-              <div style="color:var(--muted)">Gross</div>
-              <div style="font-size:16px;font-weight:600;color:var(--primary-light)">₹${Math.round(payslip.gross)}</div>
+              <div style="color:var(--muted)">Total Deductions</div>
+              <div style="font-size:16px;font-weight:600;color:var(--red)">₹${Math.round(payslip.totalDeductions)}</div>
             </div>
             <div>
               <div style="color:var(--muted)">Net Salary</div>
-              <div style="font-size:16px;font-weight:600;color:var(--green)">₹${Math.round(payslip.net)}</div>
+              <div style="font-size:16px;font-weight:600;color:var(--green)">₹${Math.round(payslip.netSalary)}</div>
             </div>
           </div>
         </div>
@@ -3536,11 +3536,19 @@ async function calculatePayslip(emp, year, month, settings) {
     .gte('date', monthStr + '-01')
     .lte('date', monthStr + '-31');
 
+  const { data: leaves } = await supabaseClient
+    .from('leave_requests')
+    .select('*')
+    .eq('emp_id', emp.emp_id)
+    .eq('status', 'Approved')
+    .gte('from_date', monthStr + '-01')
+    .lte('to_date', monthStr + '-31');
+
   const penaltyPct = settings?.penalty_per_late_pct || 2;
   const absentPct = settings?.absent_penalty_pct || 5;
   const shortdayPct = settings?.shortday_penalty_pct || 3;
 
-  let presentDays = 0, lateDays = 0, absentDays = 0, shortDays = 0;
+  let presentDays = 0, lateDays = 0, absentDays = 0, shortDays = 0, leaveDays = 0;
 
   if (logs) {
     logs.forEach(log => {
@@ -3551,25 +3559,69 @@ async function calculatePayslip(emp, year, month, settings) {
     });
   }
 
+  if (leaves) {
+    leaves.forEach(leave => {
+      leaveDays += leave.days || 0;
+    });
+  }
+
+  // Indian Salary Structure
   const basic = emp.basic_salary || 0;
-  const hra = emp.hra || 0;
-  const pf = emp.pf_deduction || 0;
-  const gross = basic + hra;
+  const hra = emp.hra || (basic * 0.40); // Default 40% if not set
+  const da = emp.da || (basic * 0.50); // Dearness Allowance - typically 50% of basic
+  const allowances = emp.other_allowances || 0;
 
-  // Calculate deductions
-  const latePenalty = (basic / 30) * lateDays * (penaltyPct / 100);
-  const absentPenalty = (basic / 30) * absentDays * (absentPct / 100);
-  const shortDayPenalty = (basic / 30) * shortDays * (shortdayPct / 100);
+  const grossSalary = basic + hra + da + allowances;
+  const salaryPerDay = grossSalary / 30;
 
-  const totalDeductions = pf + latePenalty + absentPenalty + shortDayPenalty;
-  const net = gross - totalDeductions;
+  // Deductions
+  const pf = Math.min(emp.pf_deduction || (basic * 0.12), 50000 / 12); // 12% PF, max ₹50k/month
+  const esi = emp.esi_deduction || 0; // ESI if applicable
+  const professionalTax = calculateProfessionalTax(grossSalary, settings); // State-specific
+
+  // Attendance-based deductions
+  const latePenalty = (salaryPerDay * lateDays * (penaltyPct / 100));
+  const absentPenalty = (salaryPerDay * absentDays * (absentPct / 100));
+  const shortDayPenalty = (salaryPerDay * shortDays * (shortdayPct / 100));
+
+  // TDS Calculation (Simplified - based on annual calculation)
+  const tds = calculateTDS(grossSalary - (pf + esi + professionalTax));
+
+  const totalDeductions = pf + esi + professionalTax + latePenalty + absentPenalty + shortDayPenalty + tds;
+  const netSalary = grossSalary - totalDeductions;
 
   return {
-    basic, hra, gross, pf, net,
-    presentDays, lateDays, absentDays, shortDays,
+    basic, hra, da, allowances, grossSalary,
+    pf, esi, professionalTax, tds,
+    presentDays, lateDays, absentDays, shortDays, leaveDays,
     latePenalty, absentPenalty, shortDayPenalty,
+    totalDeductions, netSalary,
     month: monthStr
   };
+}
+
+function calculateProfessionalTax(grossSalary, settings) {
+  // Indian Professional Tax varies by state
+  // Maharashtra: 0-5000, 5000-10000, above 10000
+  if (grossSalary < 5000) return 0;
+  else if (grossSalary < 10000) return 150;
+  else return 200; // Typical range, adjust based on employee state
+}
+
+function calculateTDS(taxableIncome) {
+  // FY 2026-27 Indian Tax Slabs (Resident Individual)
+  // This is simplified monthly calculation
+  let monthlyTax = 0;
+  const annualIncome = taxableIncome * 12;
+
+  if (annualIncome <= 300000) monthlyTax = 0;
+  else if (annualIncome <= 700000) monthlyTax = ((annualIncome - 300000) * 0.05) / 12;
+  else if (annualIncome <= 1000000) monthlyTax = ((400000 * 0.05) + ((annualIncome - 700000) * 0.20)) / 12;
+  else if (annualIncome <= 1200000) monthlyTax = ((400000 * 0.05) + (300000 * 0.20) + ((annualIncome - 1000000) * 0.30)) / 12;
+  else monthlyTax = ((400000 * 0.05) + (300000 * 0.20) + (200000 * 0.30) + ((annualIncome - 1200000) * 0.45)) / 12;
+
+  // Add Health and Education cess (4% on TDS)
+  return Math.round(monthlyTax + (monthlyTax * 0.04));
 }
 
 function updatePayslipData(empId, field, value) {
