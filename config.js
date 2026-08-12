@@ -4,6 +4,6 @@ window.HIVU_CONFIG = {
   office: {
     lat: 28.7041,
     lng: 77.1025,
-    radius: 500
+    radius: 10000
   }
 };
