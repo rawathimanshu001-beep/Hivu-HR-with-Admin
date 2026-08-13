@@ -2907,7 +2907,7 @@ async function loadAttendanceData() {
 
       document.getElementById('stat-leave').textContent = Math.max(0, 12 - Object.keys(dateMap).length);
 
-      await renderCalendar(data);
+      renderCalendar(data);
       renderAttendanceLogs(data);
       await calculateMissingAttendance(dateMap);
     }
@@ -3029,113 +3029,74 @@ async function refreshAttendanceData() {
   }
 }
 
-async function renderCalendar(logs) {
+function renderCalendar(logs) {
   try {
+    const container = document.getElementById('cal-container');
+    if (!container) {
+      console.error('Calendar container not found');
+      return;
+    }
+
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
-    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
 
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     let html = '';
+
+    // Add day headers
     const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    days.forEach(d => html += `<div class="cal-day-hdr">${d}</div>`);
+    days.forEach(d => {
+      html += `<div class="cal-day-hdr">${d}</div>`;
+    });
 
-    for (let i = 0; i < firstDay; i++) html += '<div class="cal-day cal-day-empty"></div>';
-
-    const empId = localStorage.getItem('auth_emp_id');
-    const leaveSet = new Set();
-    const weekendDays = [];
-
-    try {
-      // Fetch leave requests for this month
-      const { data: leaves, error: leaveError } = await supabaseClient
-        .from('leave_requests')
-        .select('from_date,to_date')
-        .eq('emp_id', empId)
-        .eq('status', 'Approved')
-        .gte('from_date', monthStr + '-01')
-        .lte('to_date', monthStr + '-31');
-
-      if (!leaveError && leaves) {
-        leaves.forEach(leave => {
-          const from = new Date(leave.from_date);
-          const to = new Date(leave.to_date);
-          for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-            leaveSet.add(d.toISOString().split('T')[0]);
-          }
-        });
-      }
-    } catch (e) {
-      console.log('Leave fetch error (non-critical):', e.message);
+    // Add empty days for first week
+    for (let i = 0; i < firstDay; i++) {
+      html += '<div class="cal-day cal-day-empty"></div>';
     }
 
-    try {
-      // Fetch weekend settings
-      const { data: weekendSettings, error: weekendError } = await supabaseClient
-        .from('weekend_settings')
-        .select('*')
-        .limit(1)
-        .single();
-
-      if (!weekendError && weekendSettings) {
-        if (weekendSettings.sunday_off) weekendDays.push(0);
-        if (weekendSettings.monday_off) weekendDays.push(1);
-        if (weekendSettings.tuesday_off) weekendDays.push(2);
-        if (weekendSettings.wednesday_off) weekendDays.push(3);
-        if (weekendSettings.thursday_off) weekendDays.push(4);
-        if (weekendSettings.friday_off) weekendDays.push(5);
-        if (weekendSettings.saturday_off) weekendDays.push(6);
-      }
-    } catch (e) {
-      console.log('Weekend settings fetch error (non-critical):', e.message);
-    }
-
+    // Build log map from attendance data
     const logMap = {};
-    if (logs) {
+    if (logs && Array.isArray(logs)) {
       logs.forEach(log => {
-        if (log.date) logMap[log.date] = log.status || 'Present';
+        if (log.date) {
+          logMap[log.date] = log.status || 'Present';
+        }
       });
     }
 
+    // Add calendar days
     for (let i = 1; i <= daysInMonth; i++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      const dayOfWeek = new Date(year, month, i).getDay();
-      const isToday = i === today.getDate();
+      const isToday = (i === today.getDate());
+
       let className = 'cal-day';
-
       const status = logMap[dateStr];
-      const isLeave = leaveSet.has(dateStr);
-      const isWeekend = weekendDays.includes(dayOfWeek);
 
-      if (isLeave) {
+      if (status === 'Present') {
+        className += ' present';
+      } else if (status === 'Late') {
+        className += ' late';
+      } else if (status === 'Absent') {
+        className += ' absent';
+      } else if (status === 'Leave') {
         className += ' leave';
-      } else if (isWeekend) {
-        className += ' weekend';
-      } else if (status) {
-        if (status === 'Present') className += ' present';
-        else if (status === 'Absent') className += ' absent';
-        else if (status === 'Late') className += ' late';
-        else if (status === 'Short Day') className += ' late';
       }
 
-      if (isToday) className += ' today';
+      if (isToday) {
+        className += ' today';
+      }
 
       html += `<div class="${className}">${i}</div>`;
     }
 
-    const container = document.getElementById('cal-container');
-    if (container) {
-      container.innerHTML = html;
-    }
+    container.innerHTML = html;
+    console.log('Calendar rendered successfully with', Object.keys(logMap).length, 'attendance records');
+
   } catch (err) {
     console.error('Error rendering calendar:', err);
-    const container = document.getElementById('cal-container');
-    if (container) {
-      container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Unable to load calendar</div>';
-    }
   }
 }
 
