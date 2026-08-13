@@ -2123,15 +2123,15 @@ body.light-mode .leaflet-tile {
           <div class="form-group">
             <label class="form-label">From date</label>
             <div class="date-input-wrapper">
-              <input type="text" class="form-input date-input" id="leave-from" placeholder="Select date" readonly onclick="openCalendar('leave-from')">
-              <i class="ti ti-calendar date-input-icon"></i>
+              <input type="text" class="form-input date-input" id="leave-from" data-calendar-field="leave-from" placeholder="Select date" readonly>
+              <i class="ti ti-calendar date-input-icon" data-calendar-field="leave-from"></i>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">To date</label>
             <div class="date-input-wrapper">
-              <input type="text" class="form-input date-input" id="leave-to" placeholder="Select date" readonly onclick="openCalendar('leave-to')">
-              <i class="ti ti-calendar date-input-icon"></i>
+              <input type="text" class="form-input date-input" id="leave-to" data-calendar-field="leave-to" placeholder="Select date" readonly>
+              <i class="ti ti-calendar date-input-icon" data-calendar-field="leave-to"></i>
             </div>
           </div>
           <div class="form-group">
@@ -3720,6 +3720,38 @@ function closeCalendar() {
   }
 }
 
+function initCalendarEventListeners() {
+  try {
+    const dateInputs = document.querySelectorAll('[data-calendar-field]');
+    const calendarOverlay = document.getElementById('calendar-overlay');
+    const calendarModal = document.querySelector('.calendar-modal');
+
+    dateInputs.forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fieldId = el.getAttribute('data-calendar-field');
+        if (fieldId) {
+          openCalendar(fieldId);
+        }
+      });
+    });
+
+    if (calendarOverlay && calendarModal) {
+      calendarOverlay.addEventListener('click', (e) => {
+        if (e.target === calendarOverlay) {
+          closeCalendar();
+        }
+      });
+
+      calendarModal.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
+  } catch (err) {
+    console.error('Error initializing calendar listeners:', err);
+  }
+}
+
 function renderCalendar() {
   try {
     const monthYearEl = document.getElementById('calendar-month-year');
@@ -4284,6 +4316,10 @@ window.addEventListener('load', async () => {
   loadWorkSettings().catch(e => console.error('Work settings error:', e));
   loadLeaveTypes().catch(e => console.error('Leave types error:', e));
   loadLeaveBalance().catch(e => console.error('Leave balance error:', e));
+
+  setTimeout(() => {
+    initCalendarEventListeners();
+  }, 500);
   populateMonthPicker().catch(e => console.error('Month picker error:', e));
   setupDatePickerListeners();
 
