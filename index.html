@@ -3824,7 +3824,7 @@ function openCalendar(fieldId) {
       CALENDAR_STATE.selectedDate = date;
     }
 
-    renderCalendar();
+    renderLeaveCalendar();
     overlayEl.classList.add('open');
   } catch (err) {
     console.error('Error opening calendar:', err);
@@ -3874,7 +3874,7 @@ function initCalendarEventListeners() {
   }
 }
 
-function renderCalendar() {
+function renderLeaveCalendar() {
   try {
     const monthYearEl = document.getElementById('calendar-month-year');
     const datesEl = document.getElementById('calendar-dates');
@@ -3931,7 +3931,7 @@ function renderCalendar() {
 
 function selectCalendarDate(day) {
   CALENDAR_STATE.selectedDate = new Date(CALENDAR_STATE.currentYear, CALENDAR_STATE.currentMonth, day);
-  renderCalendar();
+  renderLeaveCalendar();
 }
 
 function confirmCalendarDate() {
@@ -3964,7 +3964,7 @@ function calendarPrevMonth() {
   } else {
     CALENDAR_STATE.currentMonth--;
   }
-  renderCalendar();
+  renderLeaveCalendar();
 }
 
 function calendarNextMonth() {
@@ -3974,7 +3974,7 @@ function calendarNextMonth() {
   } else {
     CALENDAR_STATE.currentMonth++;
   }
-  renderCalendar();
+  renderLeaveCalendar();
 }
 
 function toggleMonthPicker() {
