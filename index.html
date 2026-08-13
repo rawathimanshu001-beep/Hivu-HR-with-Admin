@@ -1002,47 +1002,91 @@ input[type="date"]::-webkit-inner-spin-button {
   text-transform: uppercase;
 }
 
-.cal-day {
-  aspect-ratio: 1;
-  border-radius: 8px;
+.cal-day.holiday {
+  background: rgba(100, 100, 150, 0.15);
+  color: var(--muted);
+  border: 1px solid rgba(100, 100, 150, 0.3);
+  opacity: 0.6;
+}
+
+/* Leave-type selector cards (Apply form) */
+.lt-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.lt-card {
+  position: relative;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(26, 31, 59, 0.6);
+  border: 1.5px solid rgba(0, 102, 255, 0.15);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.1s;
+}
+
+.lt-card:active {
+  transform: scale(0.97);
+}
+
+.lt-card.selected {
+  border-color: var(--primary-light);
+  background: rgba(0, 102, 255, 0.12);
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.15);
+}
+
+.lt-card .lt-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: default;
-  border: 1px solid transparent;
-  background: var(--navy);
-  min-height: 40px;
+  gap: 6px;
 }
 
-.cal-day.present {
-  background: rgba(0, 212, 255, 0.2);
-  color: var(--primary-light);
-  border: 1px solid rgba(0, 212, 255, 0.3);
+.lt-card .lt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.cal-day.absent {
-  background: rgba(255, 77, 106, 0.2);
-  color: var(--red);
-  border: 1px solid rgba(255, 77, 106, 0.3);
-}
-
-.cal-day.late {
-  background: rgba(255, 165, 0, 0.2);
-  color: var(--orange);
-  border: 1px solid rgba(255, 165, 0, 0.3);
-}
-
-.cal-day.leave {
-  background: rgba(0, 102, 255, 0.2);
-  color: var(--primary);
-  border: 1px solid rgba(0, 102, 255, 0.3);
-}
-
-.cal-day.today {
-  border: 2px solid var(--primary-light);
+.lt-card .lt-left {
+  font-size: 18px;
   font-weight: 700;
+}
+
+.lt-card .lt-total {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.lt-card .lt-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.lt-card .lt-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.lt-card .lt-check {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  color: var(--primary-light);
+  font-size: 15px;
+  display: none;
+}
+
+.lt-card.selected .lt-check {
+  display: block;
 }
 
 .log-wrapper {
@@ -2147,33 +2191,21 @@ body.light-mode .leaflet-tile {
     <div class="page" id="pg-leave">
       <!-- LEAVE TABS -->
       <div style="display:flex;gap:8px;padding:12px 16px;overflow-x:auto;border-bottom:1px solid rgba(0,102,255,0.1)">
-        <button class="tab-btn active" onclick="switchLeaveTab('balance')" style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid rgba(0,102,255,0.3);background:linear-gradient(135deg,var(--primary),var(--primary-light));color:white;font-size:12px;font-weight:600;cursor:pointer">Balance</button>
-        <button class="tab-btn" onclick="switchLeaveTab('apply')" style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid rgba(0,102,255,0.2);background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer">Apply</button>
+        <button class="tab-btn active" onclick="switchLeaveTab('apply')" style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid rgba(0,102,255,0.3);background:linear-gradient(135deg,var(--primary),var(--primary-light));color:white;font-size:12px;font-weight:600;cursor:pointer">Apply</button>
         <button class="tab-btn" onclick="switchLeaveTab('history')" style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid rgba(0,102,255,0.2);background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer">History</button>
         <button class="tab-btn" onclick="switchLeaveTab('holidays')" style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid rgba(0,102,255,0.2);background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer">Holidays</button>
       </div>
 
-      <!-- BALANCE TAB -->
-      <div id="leave-balance-tab" style="display:block">
-        <div class="section-title" style="padding:16px 16px 0">Leave balance</div>
-        <div class="balance-grid" id="leave-balance-container">
-          <div style="text-align:center;color:var(--muted);padding:20px;font-size:12px">Loading...</div>
-        </div>
-      </div>
-
       <!-- APPLY TAB -->
-      <div id="leave-apply-tab" style="display:none">
+      <div id="leave-apply-tab" style="display:block">
         <div class="form-card">
           <div class="section-title" style="padding:0 0 12px">Apply for leave</div>
           <div class="form-group">
             <label class="form-label">Leave type</label>
-            <select class="form-select" id="leave-type">
-              <option value="">Select leave type</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Available</label>
-            <div style="font-size:14px;font-weight:600;color:var(--primary-light);padding:8px 0" id="leave-available">—</div>
+            <div class="lt-cards" id="leave-type-cards">
+              <div style="color:var(--muted);font-size:12px;padding:8px 0">Loading leave types...</div>
+            </div>
+            <input type="hidden" id="leave-type" value="">
           </div>
           <div class="form-group">
             <label class="form-label">From date</label>
@@ -2274,6 +2306,17 @@ body.light-mode .leaflet-tile {
           <span id="slip-net">₹—</span>
         </div>
       </div>
+
+      <div style="padding:0 16px;margin-top:14px">
+        <button class="btn-submit" onclick="downloadPayslipPDF()"><i class="ti ti-download"></i> Download PDF</button>
+      </div>
+
+      <div class="slip-card" id="slip-penalty-card" style="display:none;margin-top:14px">
+        <div style="padding:12px 14px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;background:var(--navy)">Penalty breakdown</div>
+        <div id="slip-penalty-breakdown"></div>
+      </div>
+
+      <div id="slip-penalty-rules" style="display:none;margin:14px 16px 20px;padding:12px 14px;border-radius:12px;background:rgba(255,165,0,0.06);border:1px solid rgba(255,165,0,0.15);font-size:11px;color:var(--muted);line-height:1.8"></div>
     </div>
 
     <!-- ATTENDANCE PAGE -->
@@ -2317,11 +2360,11 @@ body.light-mode .leaflet-tile {
           </div>
           <div style="display:flex;align-items:center;gap:6px">
             <div style="width:16px;height:16px;background:rgba(0,102,255,0.2);border:1px solid rgba(0,102,255,0.4);border-radius:4px"></div>
-            <span style="color:var(--muted)">Leave/Holiday</span>
+            <span style="color:var(--muted)">Leave</span>
           </div>
           <div style="display:flex;align-items:center;gap:6px;grid-column:1">
             <div style="width:16px;height:16px;background:rgba(100,100,150,0.15);border:1px solid rgba(100,100,150,0.3);border-radius:4px;opacity:0.6"></div>
-            <span style="color:var(--muted)">Weekend</span>
+            <span style="color:var(--muted)">Weekend / Holiday</span>
           </div>
         </div>
       </div>
@@ -2569,6 +2612,20 @@ function toLocalDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Parse "04:12:44 pm" / "16:12" / "09:30:00" into minutes since midnight (null if unparseable)
+function parseTimeToMinutes(str) {
+  if (!str) return null;
+  const m = String(str).trim().match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if (!m) return null;
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2]);
+  const s = parseInt(m[3] || '0');
+  const ap = (m[4] || '').toLowerCase();
+  if (ap === 'pm' && h !== 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  return h * 60 + min + s / 60;
+}
+
 async function initSupabase() {
   if (!window.HIVU_CONFIG || !HIVU_CONFIG.supabaseUrl || !HIVU_CONFIG.supabaseKey) {
     console.error('Supabase credentials not configured');
@@ -2746,6 +2803,14 @@ async function restoreClockState() {
       } else if (latestRecord.clock_in_time && latestRecord.clock_out_time) {
         STATE.displayClockInTime = latestRecord.clock_in_time;
         STATE.displayClockOutTime = latestRecord.clock_out_time;
+
+        // Show the completed-day state instead of "Not clocked in"
+        const hoursTxt = latestRecord.hours_worked || '';
+        const elapsedEl = document.getElementById('elapsed-time');
+        if (elapsedEl && hoursTxt) elapsedEl.textContent = hoursTxt;
+        document.getElementById('status-pulse').style.background = 'var(--orange)';
+        document.getElementById('status-pulse').classList.remove('pulse-animate');
+        document.getElementById('status-txt').textContent = hoursTxt ? `Clocked out · ${hoursTxt}` : 'Clocked out';
       }
     }
   } catch (err) {
@@ -3092,7 +3157,7 @@ function renderCalendar(dayStatus) {
       'Absent': 'absent',
       'Missing Clock Out': 'late',
       'Leave': 'leave',
-      'Holiday': 'leave',
+      'Holiday': 'holiday',
       'Weekend': 'weekend'
     };
 
@@ -3548,10 +3613,6 @@ async function confirmClockOut() {
 async function proceedClockOut() {
   const now = new Date();
   const empId = localStorage.getItem('auth_emp_id');
-  const elapsedMs = Date.now() - STATE.clockInTime;
-  const hours = Math.floor(elapsedMs / 3600000);
-  const mins = Math.floor((elapsedMs % 3600000) / 60000);
-  const totalHours = hours + (mins / 60);
   const clockOutTimeStr = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true});
   const localDate = toLocalDateStr(now);
 
@@ -3566,27 +3627,43 @@ async function proceedClockOut() {
       .limit(1)
       .single();
 
+    // Elapsed time from the recorded clock-in (AM/PM-safe), falling back to in-memory state
+    const inMinutes = parseTimeToMinutes(existing?.clock_in_time);
+    const outMinutes = parseTimeToMinutes(clockOutTimeStr);
+    let elapsedMin;
+    if (inMinutes != null && outMinutes != null && outMinutes >= inMinutes) {
+      elapsedMin = Math.round(outMinutes - inMinutes);
+    } else if (STATE.clockInTime) {
+      elapsedMin = Math.max(0, Math.round((Date.now() - STATE.clockInTime) / 60000));
+    } else {
+      elapsedMin = 0;
+    }
+    const hours = Math.floor(elapsedMin / 60);
+    const mins = elapsedMin % 60;
+    const totalHours = elapsedMin / 60;
+
     if (existing) {
-      // Calculate status & penalty
       let status = 'Present';
-      let penalty = 0;
       let remarks = '';
 
-      // Check if late clock-in
-      const clockInTime = existing.clock_in_time;
-      if (clockInTime > COMPANY_SETTINGS.late_after_time) {
+      const lateAfterMin = parseTimeToMinutes(COMPANY_SETTINGS.late_after_time || '09:30');
+      const isLate = inMinutes != null && lateAfterMin != null && inMinutes > lateAfterMin;
+      const isShort = totalHours < (COMPANY_SETTINGS.short_day_threshold || 6);
+      const shortHours = Math.max(0, (COMPANY_SETTINGS.min_hours_per_day || 8) - totalHours);
+
+      if (isLate) {
         status = 'Late';
-        penalty = -500;
         remarks = 'Late clock-in';
       }
-
-      // Check if short day
-      if (totalHours < COMPANY_SETTINGS.short_day_threshold) {
-        status = 'Short Day';
-        const shortHours = COMPANY_SETTINGS.min_hours_per_day - totalHours;
-        penalty = Math.round(shortHours * COMPANY_SETTINGS.penalty_per_late_hour);
-        remarks = `Short by ${shortHours.toFixed(1)}h`;
+      if (isShort) {
+        if (isLate) {
+          remarks += ` · Short by ${shortHours.toFixed(1)}h`;
+        } else {
+          status = 'Short Day';
+          remarks = `Short by ${shortHours.toFixed(1)}h`;
+        }
       }
+      const penalty = 0; // monetary penalties are computed on the payslip from admin-set percentages
 
       const { error } = await supabaseClient
         .from('attendance_logs')
@@ -3634,7 +3711,6 @@ async function proceedClockOut() {
 }
 
 function switchLeaveTab(tab) {
-  document.getElementById('leave-balance-tab').style.display = 'none';
   document.getElementById('leave-apply-tab').style.display = 'none';
   document.getElementById('leave-history-tab').style.display = 'none';
   document.getElementById('leave-holidays-tab').style.display = 'none';
@@ -3658,100 +3734,53 @@ function switchLeaveTab(tab) {
   if (tab === 'holidays') loadCompanyHolidays();
 }
 
-async function loadLeaveTypes() {
-  try {
-    const { data } = await supabaseClient
-      .from('leave_types')
-      .select('*')
-      .eq('is_active', true);
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
-    if (data) {
-      const select = document.getElementById('leave-type');
-      select.innerHTML = '<option value="">Select leave type</option>';
-      data.forEach(type => {
-        select.innerHTML += `<option value="${type.id}">${type.name}</option>`;
-      });
-      select.onchange = updateLeaveAvailable;
+// Renders leave types as selectable cards with live remaining balance
+async function loadLeaveTypes() {
+  const container = document.getElementById('leave-type-cards');
+  if (!container) return;
+  const empId = localStorage.getItem('auth_emp_id');
+
+  try {
+    const [{ data: types }, { data: balances }] = await Promise.all([
+      supabaseClient.from('leave_types').select('*').eq('is_active', true),
+      supabaseClient.from('employee_leave_balance').select('*').eq('emp_id', empId)
+    ]);
+
+    if (!types || types.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">No leave types configured</div>';
+      return;
     }
+
+    const selectedId = document.getElementById('leave-type').value;
+    container.innerHTML = types.map(type => {
+      const bal = balances?.find(b => b.leave_type_id === type.id);
+      const total = (bal?.balance ?? type.days_per_year) || 0;
+      const remaining = Math.max(0, total - (bal?.used || 0));
+      const pct = total > 0 ? Math.round((remaining / total) * 100) : 0;
+      const color = type.color || 'var(--primary)';
+      return `
+        <div class="lt-card${type.id === selectedId ? ' selected' : ''}" data-type-id="${escapeHtml(type.id)}" data-remaining="${remaining}" onclick="selectLeaveType(this)">
+          <i class="ti ti-circle-check-filled lt-check"></i>
+          <div class="lt-name"><span class="lt-dot" style="background:${escapeHtml(color)}"></span>${escapeHtml(type.name)}</div>
+          <div class="lt-left">${remaining} <span class="lt-total">/ ${total} left</span></div>
+          <div class="lt-bar"><div class="lt-fill" style="width:${pct}%;background:${escapeHtml(color)}"></div></div>
+        </div>`;
+    }).join('');
   } catch (err) {
     console.log('Error loading leave types');
   }
 }
 
-// Shows remaining balance for the selected leave type in the Apply form
-async function updateLeaveAvailable() {
-  const availEl = document.getElementById('leave-available');
-  const typeId = document.getElementById('leave-type').value;
-  const empId = localStorage.getItem('auth_emp_id');
-  if (!typeId || !empId) { availEl.textContent = '—'; return; }
-
-  try {
-    const { data: balances } = await supabaseClient
-      .from('employee_leave_balance')
-      .select('balance, used')
-      .eq('emp_id', empId)
-      .eq('leave_type_id', typeId)
-      .limit(1);
-
-    if (balances && balances.length > 0) {
-      const remaining = (balances[0].balance || 0) - (balances[0].used || 0);
-      availEl.textContent = `${Math.max(0, remaining)} days`;
-      availEl.dataset.remaining = Math.max(0, remaining);
-    } else {
-      const { data: type } = await supabaseClient
-        .from('leave_types').select('days_per_year').eq('id', typeId).single();
-      availEl.textContent = `${type?.days_per_year || 0} days`;
-      availEl.dataset.remaining = type?.days_per_year || 0;
-    }
-  } catch (err) {
-    availEl.textContent = '—';
-  }
-}
-
-async function loadLeaveBalance() {
-  const empId = localStorage.getItem('auth_emp_id');
-  if (!empId) return;
-
-  try {
-    const { data: types } = await supabaseClient
-      .from('leave_types')
-      .select('*')
-      .eq('is_active', true);
-
-    if (!types || types.length === 0) {
-      document.getElementById('leave-balance-container').innerHTML =
-        '<div style="text-align:center;color:var(--muted);padding:20px;font-size:12px">No leave types configured. Admin needs to set up leave types.</div>';
-      return;
-    }
-
-    const { data: balances } = await supabaseClient
-      .from('employee_leave_balance')
-      .select('*')
-      .eq('emp_id', empId);
-
-    let html = '';
-    types.forEach(type => {
-      const balance = balances?.find(b => b.leave_type_id === type.id) || {balance: type.days_per_year, used: 0};
-      const remaining = (balance.balance || type.days_per_year) - (balance.used || 0);
-      const total = type.days_per_year;
-      const percent = total > 0 ? Math.round((remaining / total) * 100) : 0;
-
-      html += `
-        <div class="bal-card">
-          <div class="bal-type">${type.name}</div>
-          <div class="bal-count">${remaining} <span class="bal-total">/ ${total}</span></div>
-          <div class="bal-bar"><div class="bal-fill" style="width:${percent}%;background:${type.color}"></div></div>
-        </div>
-      `;
-    });
-
-    document.getElementById('leave-balance-container').innerHTML = html ||
-      '<div style="text-align:center;color:var(--muted);padding:20px;font-size:12px">No leave balance data</div>';
-  } catch (err) {
-    console.log('Error loading leave balance:', err);
-    document.getElementById('leave-balance-container').innerHTML =
-      '<div style="text-align:center;color:var(--red);padding:20px;font-size:12px">Error loading leave balance</div>';
-  }
+function selectLeaveType(card) {
+  document.querySelectorAll('#leave-type-cards .lt-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  const input = document.getElementById('leave-type');
+  input.value = card.dataset.typeId;
+  input.dataset.remaining = card.dataset.remaining;
 }
 
 async function loadLeaveHistory() {
@@ -3759,12 +3788,15 @@ async function loadLeaveHistory() {
   if (!empId) return;
 
   try {
-    const { data } = await supabaseClient
-      .from('leave_requests')
-      .select(`id, leave_type_id, from_date, to_date, days, reason, status, created_at`)
-      .eq('emp_id', empId)
-      .order('created_at', { ascending: false })
-      .limit(10);
+    const [{ data }, { data: types }] = await Promise.all([
+      supabaseClient
+        .from('leave_requests')
+        .select(`id, leave_type_id, from_date, to_date, days, reason, status, created_at`)
+        .eq('emp_id', empId)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabaseClient.from('leave_types').select('id, name, color')
+    ]);
 
     if (!data || data.length === 0) {
       document.getElementById('leave-history-container').innerHTML =
@@ -3772,17 +3804,26 @@ async function loadLeaveHistory() {
       return;
     }
 
+    const typeMap = {};
+    (types || []).forEach(t => { typeMap[t.id] = t; });
+
     let html = '';
     data.forEach(req => {
       const startDate = new Date(req.from_date).toLocaleDateString('en-IN');
       const endDate = new Date(req.to_date).toLocaleDateString('en-IN');
       const statusColor = req.status === 'Approved' ? 'var(--green)' : req.status === 'Rejected' ? 'var(--red)' : 'var(--orange)';
+      const type = typeMap[req.leave_type_id];
+      const typeName = type?.name || 'Leave';
+      const typeColor = type?.color || 'var(--primary)';
 
       html += `
         <div class="log-item" style="margin-bottom:10px">
           <div class="log-item-header" style="justify-content:space-between">
             <div>
-              <div class="log-item-date">${req.days} days leave</div>
+              <div class="log-item-date" style="display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:50%;background:${escapeHtml(typeColor)};flex-shrink:0"></span>
+                ${req.days} day${req.days > 1 ? 's' : ''} · ${escapeHtml(typeName)}
+              </div>
               <div class="log-item-summary">${startDate} to ${endDate}</div>
             </div>
             <div style="font-size:11px;font-weight:600;color:${statusColor}">${req.status}</div>
@@ -4048,8 +4089,8 @@ async function submitLeave() {
 
   const days = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
 
-  const availEl = document.getElementById('leave-available');
-  const remaining = parseFloat(availEl?.dataset?.remaining);
+  const typeInput = document.getElementById('leave-type');
+  const remaining = parseFloat(typeInput?.dataset?.remaining);
   if (!isNaN(remaining) && days > remaining) {
     showToast(`Only ${remaining} days available for this leave type`);
     return;
@@ -4070,13 +4111,16 @@ async function submitLeave() {
 
     if (error) throw error;
 
-    document.getElementById('leave-type').value = '';
+    const typeEl = document.getElementById('leave-type');
+    typeEl.value = '';
+    delete typeEl.dataset.remaining;
     document.getElementById('leave-from').value = '';
     document.getElementById('leave-to').value = '';
     document.getElementById('leave-reason').value = '';
+    document.querySelectorAll('#leave-type-cards .lt-card').forEach(c => c.classList.remove('selected'));
 
     showToast('Leave request submitted');
-    await loadLeaveBalance();
+    loadLeaveTypes();
   } catch (err) {
     showToast('Error submitting leave');
     console.error(err);
@@ -4366,58 +4410,44 @@ async function loadPayslip(monthStr, chipEl) {
   const [year, month] = monthStr.split('-');
 
   try {
-    const { data: emp } = await supabaseClient
-      .from('employees')
-      .select('*')
-      .eq('emp_id', empId)
-      .single();
+    const monthNum = parseInt(month);
+    const lastDay = new Date(year, monthNum, 0).getDate();
+    const monthEnd = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
+
+    const [{ data: emp }, { data: saved }, { data: settings }, { data: logs }] = await Promise.all([
+      supabaseClient.from('employees').select('*').eq('emp_id', empId).single(),
+      supabaseClient.from('payslips').select('*').eq('emp_id', empId).eq('month', monthStr).limit(1),
+      supabaseClient.from('company_settings').select('*').limit(1).single(),
+      supabaseClient.from('attendance_logs').select('date, status').eq('emp_id', empId)
+        .gte('date', monthStr + '-01').lte('date', monthEnd)
+    ]);
 
     if (!emp) {
       document.getElementById('slip-name').textContent = 'Employee not found';
       return;
     }
 
-    const monthName = new Date(year, parseInt(month) - 1).toLocaleString('default', { month: 'long' });
+    const monthName = new Date(year, monthNum - 1).toLocaleString('default', { month: 'long' });
     document.getElementById('slip-name').textContent = emp.name || '—';
     document.getElementById('slip-sub').textContent = `${emp.emp_id} · ${emp.designation || '—'} · ${monthName} ${year}`;
 
     const attEl = document.getElementById('slip-attendance');
 
-    // 1) Prefer the payslip generated by admin for this month
-    const { data: saved } = await supabaseClient
-      .from('payslips')
-      .select('*')
-      .eq('emp_id', empId)
-      .eq('month', monthStr)
-      .limit(1);
-
-    let slip;
+    let slip, official, attLine;
     if (saved && saved.length > 0) {
+      // 1) Prefer the payslip generated by admin for this month
       const p = saved[0];
+      official = true;
+      attLine = `Present: ${p.present_days ?? '—'} | Late: ${p.late_days ?? '—'} | Absent: ${p.absent_days ?? '—'}`;
       slip = {
         basic: p.basic_salary, hra: p.hra, da: p.da, allowances: p.other_allowances,
         gross: p.gross_salary, pf: p.pf_deduction, esi: p.esi_deduction,
         insurance: p.insurance_deduction,
         penalty: (p.late_penalty || 0) + (p.absent_penalty || 0) + (p.short_day_penalty || 0),
-        totalDed: p.total_deductions, net: p.net_salary,
-        note: `✓ Official payslip · Present: ${p.present_days ?? '—'} | Late: ${p.late_days ?? '—'} | Absent: ${p.absent_days ?? '—'}`
+        totalDed: p.total_deductions, net: p.net_salary
       };
     } else {
       // 2) Fallback: live estimate with the same formula the admin panel uses
-      const { data: settings } = await supabaseClient
-        .from('company_settings').select('*').limit(1).single();
-
-      const monthNum = parseInt(month);
-      const lastDay = new Date(year, monthNum, 0).getDate();
-      const monthEnd = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
-
-      const { data: logs } = await supabaseClient
-        .from('attendance_logs')
-        .select('status')
-        .eq('emp_id', empId)
-        .gte('date', monthStr + '-01')
-        .lte('date', monthEnd);
-
       let lateDays = 0, absentDays = 0, shortDays = 0, presentDays = 0;
       (logs || []).forEach(l => {
         if (l.status === 'Late') lateDays++;
@@ -4442,11 +4472,9 @@ async function loadPayslip(monthStr, chipEl) {
         perDay * shortDays * ((settings?.shortday_penalty_pct || 3) / 100);
 
       const totalDed = pf + esi + insurance + penalty;
-      slip = {
-        basic, hra, da, allowances, gross, pf, esi, insurance, penalty,
-        totalDed, net: gross - totalDed,
-        note: `Estimate (admin has not generated this month yet) · Present: ${presentDays} | Late: ${lateDays} | Absent: ${absentDays}`
-      };
+      official = false;
+      attLine = `Present: ${presentDays} | Late: ${lateDays} | Absent: ${absentDays}`;
+      slip = { basic, hra, da, allowances, gross, pf, esi, insurance, penalty, totalDed, net: gross - totalDed };
     }
 
     setSlip('slip-basic', slip.basic);
@@ -4462,9 +4490,16 @@ async function loadPayslip(monthStr, chipEl) {
     setSlip('slip-net', slip.net);
 
     if (attEl) {
-      attEl.textContent = slip.note;
+      attEl.textContent = (official ? '✓ Official payslip · ' : 'Estimate (admin has not generated this month yet) · ') + attLine;
       attEl.style.display = 'block';
     }
+
+    renderPenaltyDetails(logs, (slip.gross || 0) / 30, settings);
+
+    STATE.currentSlip = {
+      emp, slip, monthStr, official, attLine,
+      monthLabel: `${monthName} ${year}${official ? '' : ' (Estimate)'}`
+    };
 
     document.querySelectorAll('.month-chip').forEach(chip => {
       chip.classList.remove('selected');
@@ -4473,6 +4508,194 @@ async function loadPayslip(monthStr, chipEl) {
   } catch (err) {
     console.error('Error loading payslip:', err);
     document.getElementById('slip-name').textContent = 'Error loading payslip';
+  }
+}
+
+// Day-by-day penalty list + company penalty rules under the payslip
+function renderPenaltyDetails(logs, perDay, settings) {
+  const card = document.getElementById('slip-penalty-card');
+  const listEl = document.getElementById('slip-penalty-breakdown');
+  const rulesEl = document.getElementById('slip-penalty-rules');
+  if (!card || !listEl || !rulesEl) return;
+
+  const latePct = settings?.penalty_per_late_pct ?? 2;
+  const absentPct = settings?.absent_penalty_pct ?? 5;
+  const shortPct = settings?.shortday_penalty_pct ?? 3;
+  const pctMap = { 'Late': latePct, 'Absent': absentPct, 'Short Day': shortPct };
+
+  const rows = (logs || [])
+    .filter(l => pctMap[l.status] > 0)
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+  if (rows.length === 0) {
+    card.style.display = 'none';
+  } else {
+    let total = 0;
+    const rowsHtml = rows.map(l => {
+      const pct = pctMap[l.status];
+      const amt = perDay * pct / 100;
+      total += amt;
+      const dStr = new Date(l.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      const color = l.status === 'Absent' ? 'var(--red)' : 'var(--orange)';
+      return `
+        <div class="slip-row">
+          <span class="slip-row-label">${dStr} — ${l.status} <span style="color:var(--muted)">(${pct}%)</span></span>
+          <span class="slip-row-val" style="color:${color}">− ₹${Math.round(amt).toLocaleString('en-IN')}</span>
+        </div>`;
+    }).join('');
+    listEl.innerHTML = rowsHtml + `
+        <div class="slip-row" style="font-weight:700;border-bottom:none">
+          <span class="slip-row-label">Total penalty</span>
+          <span class="slip-row-val" style="color:var(--red)">− ₹${Math.round(total).toLocaleString('en-IN')}</span>
+        </div>`;
+    card.style.display = 'block';
+  }
+
+  const lateAfter = COMPANY_SETTINGS.late_after_time || '09:30';
+  const shortThreshold = COMPANY_SETTINGS.short_day_threshold || 6;
+  rulesEl.innerHTML = `
+    <div style="font-weight:600;color:var(--text);margin-bottom:4px"><i class="ti ti-info-circle"></i> Penalty rules</div>
+    • Late clock-in (after ${escapeHtml(lateAfter)}): <b>${latePct}%</b> of daily wage<br>
+    • Absent on a working day: <b>${absentPct}%</b> of daily wage<br>
+    • Short day (less than ${shortThreshold}h worked): <b>${shortPct}%</b> of daily wage<br>
+    <span style="opacity:0.85">Daily wage = Gross salary ÷ 30. Percentages are set by the company and may change.</span>`;
+  rulesEl.style.display = 'block';
+}
+
+// ---- Payslip PDF download (clean slip only — no penalty rules) ----
+let jsPDFLoadPromise = null;
+function ensureJsPDF() {
+  if (window.jspdf?.jsPDF) return Promise.resolve();
+  if (!jsPDFLoadPromise) {
+    jsPDFLoadPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = resolve;
+      s.onerror = () => { jsPDFLoadPromise = null; reject(new Error('jsPDF load failed')); };
+      document.head.appendChild(s);
+    });
+  }
+  return jsPDFLoadPromise;
+}
+
+function getImageDims(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function downloadPayslipPDF() {
+  const cur = STATE.currentSlip;
+  if (!cur) { showToast('Open a payslip first'); return; }
+
+  try {
+    showToast('Preparing PDF…');
+    await ensureJsPDF();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210;
+    let y = 16;
+
+    // Company logo (from admin settings)
+    const logo = COMPANY_SETTINGS.company_logo;
+    if (logo && logo.startsWith('data:image')) {
+      try {
+        const dim = await getImageDims(logo);
+        const w = 44;
+        const h = w * dim.h / dim.w;
+        doc.addImage(logo, 'PNG', (W - w) / 2, y, w, h);
+        y += h + 7;
+      } catch (e) { /* logo optional */ }
+    }
+
+    doc.setFontSize(15);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(20, 20, 40);
+    doc.text('Salary Slip', W / 2, y, { align: 'center' });
+    y += 6;
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(110, 110, 130);
+    doc.text(cur.monthLabel, W / 2, y, { align: 'center' });
+    y += 8;
+    doc.setDrawColor(210, 215, 230);
+    doc.line(14, y, W - 14, y);
+    y += 8;
+
+    doc.setTextColor(20, 20, 40);
+    doc.setFontSize(10);
+    [
+      ['Employee', cur.emp.name || '-'],
+      ['Employee ID', cur.emp.emp_id || '-'],
+      ['Designation', cur.emp.designation || '-'],
+      ['Department', cur.emp.department || '-']
+    ].forEach(([k, v]) => {
+      doc.setFont(undefined, 'bold');
+      doc.text(k, 14, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(String(v), 60, y);
+      y += 6;
+    });
+    doc.setFontSize(9);
+    doc.setTextColor(110, 110, 130);
+    doc.text(cur.attLine.replace(/\|/g, '·'), 14, y);
+    y += 9;
+
+    const money = n => 'Rs. ' + Math.round(n || 0).toLocaleString('en-IN');
+    const s = cur.slip;
+    const secHead = (title) => {
+      doc.setFillColor(238, 243, 255);
+      doc.rect(14, y - 4.5, W - 28, 7, 'F');
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(60, 70, 110);
+      doc.text(title.toUpperCase(), 16, y);
+      doc.setTextColor(20, 20, 40);
+      y += 8.5;
+    };
+    const row = (label, val, bold) => {
+      doc.setFontSize(10);
+      doc.setFont(undefined, bold ? 'bold' : 'normal');
+      doc.text(label, 16, y);
+      doc.text(money(val), W - 16, y, { align: 'right' });
+      y += 6.5;
+    };
+
+    secHead('Earnings');
+    row('Basic salary', s.basic);
+    row('HRA', s.hra);
+    row('DA', s.da);
+    row('Other allowances', s.allowances);
+    row('Gross', s.gross, true);
+    y += 3;
+    secHead('Deductions');
+    row('PF Deduction', s.pf);
+    row('ESI', s.esi);
+    row('Insurance', s.insurance);
+    row('Attendance penalty', s.penalty);
+    row('Total deductions', s.totalDed, true);
+    y += 3;
+
+    doc.setFillColor(0, 102, 255);
+    doc.rect(14, y - 5, W - 28, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(11);
+    doc.text('NET SALARY', 16, y + 1.5);
+    doc.text(money(s.net), W - 16, y + 1.5, { align: 'right' });
+
+    doc.setTextColor(150, 150, 165);
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.text('This is a computer-generated payslip and does not require a signature.', W / 2, 287, { align: 'center' });
+
+    doc.save(`Payslip-${cur.emp.emp_id}-${cur.monthStr}.pdf`);
+  } catch (err) {
+    console.error('PDF error:', err);
+    showToast('PDF download failed');
   }
 }
 
@@ -4490,7 +4713,6 @@ window.addEventListener('load', async () => {
 
   loadCompanySettings().catch(e => console.error('Settings error:', e));
   loadLeaveTypes().catch(e => console.error('Leave types error:', e));
-  loadLeaveBalance().catch(e => console.error('Leave balance error:', e));
 
   setTimeout(() => {
     initCalendarEventListeners();
