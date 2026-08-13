@@ -3030,8 +3030,12 @@ async function refreshAttendanceData() {
 }
 
 function renderCalendar(logs) {
+  console.log('renderCalendar called with logs:', logs?.length || 0);
+
   try {
     const container = document.getElementById('cal-container');
+    console.log('Container found:', !!container);
+
     if (!container) {
       console.error('Calendar container not found');
       return;
@@ -3040,9 +3044,11 @@ function renderCalendar(logs) {
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
+    console.log('Current month:', year, month);
 
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    console.log('First day of month:', firstDay, 'Days in month:', daysInMonth);
 
     let html = '';
 
@@ -3051,11 +3057,13 @@ function renderCalendar(logs) {
     days.forEach(d => {
       html += `<div class="cal-day-hdr">${d}</div>`;
     });
+    console.log('After headers, html length:', html.length);
 
     // Add empty days for first week
     for (let i = 0; i < firstDay; i++) {
       html += '<div class="cal-day cal-day-empty"></div>';
     }
+    console.log('After empty days, html length:', html.length);
 
     // Build log map from attendance data
     const logMap = {};
@@ -3066,6 +3074,7 @@ function renderCalendar(logs) {
         }
       });
     }
+    console.log('Log map size:', Object.keys(logMap).length);
 
     // Add calendar days
     for (let i = 1; i <= daysInMonth; i++) {
@@ -3091,12 +3100,14 @@ function renderCalendar(logs) {
 
       html += `<div class="${className}">${i}</div>`;
     }
+    console.log('Final html length:', html.length);
 
     container.innerHTML = html;
-    console.log('Calendar rendered successfully with', Object.keys(logMap).length, 'attendance records');
+    console.log('✓ Calendar rendered successfully with', Object.keys(logMap).length, 'attendance records');
 
   } catch (err) {
     console.error('Error rendering calendar:', err);
+    console.error('Error stack:', err.stack);
   }
 }
 
