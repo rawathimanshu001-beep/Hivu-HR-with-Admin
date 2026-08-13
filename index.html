@@ -3046,48 +3046,58 @@ async function renderCalendar(logs) {
     for (let i = 0; i < firstDay; i++) html += '<div class="cal-day cal-day-empty"></div>';
 
     const empId = localStorage.getItem('auth_emp_id');
-
-    // Fetch leave requests for this month
-    const { data: leaves } = await supabaseClient
-      .from('leave_requests')
-      .select('from_date,to_date')
-      .eq('emp_id', empId)
-      .eq('status', 'Approved')
-      .gte('from_date', monthStr + '-01')
-      .lte('to_date', monthStr + '-31');
-
-    // Fetch weekend settings
-    const { data: weekendSettings } = await supabaseClient
-      .from('weekend_settings')
-      .select('*')
-      .limit(1)
-      .single();
-
-    const logMap = {};
-    logs.forEach(log => {
-      if (log.date) logMap[log.date] = log.status || 'Present';
-    });
-
     const leaveSet = new Set();
-    if (leaves) {
-      leaves.forEach(leave => {
-        const from = new Date(leave.from_date);
-        const to = new Date(leave.to_date);
-        for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
-          leaveSet.add(d.toISOString().split('T')[0]);
-        }
-      });
+    const weekendDays = [];
+
+    try {
+      // Fetch leave requests for this month
+      const { data: leaves, error: leaveError } = await supabaseClient
+        .from('leave_requests')
+        .select('from_date,to_date')
+        .eq('emp_id', empId)
+        .eq('status', 'Approved')
+        .gte('from_date', monthStr + '-01')
+        .lte('to_date', monthStr + '-31');
+
+      if (!leaveError && leaves) {
+        leaves.forEach(leave => {
+          const from = new Date(leave.from_date);
+          const to = new Date(leave.to_date);
+          for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+            leaveSet.add(d.toISOString().split('T')[0]);
+          }
+        });
+      }
+    } catch (e) {
+      console.log('Leave fetch error (non-critical):', e.message);
     }
 
-    const weekendDays = [];
-    if (weekendSettings) {
-      if (weekendSettings.sunday_off) weekendDays.push(0);
-      if (weekendSettings.monday_off) weekendDays.push(1);
-      if (weekendSettings.tuesday_off) weekendDays.push(2);
-      if (weekendSettings.wednesday_off) weekendDays.push(3);
-      if (weekendSettings.thursday_off) weekendDays.push(4);
-      if (weekendSettings.friday_off) weekendDays.push(5);
-      if (weekendSettings.saturday_off) weekendDays.push(6);
+    try {
+      // Fetch weekend settings
+      const { data: weekendSettings, error: weekendError } = await supabaseClient
+        .from('weekend_settings')
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (!weekendError && weekendSettings) {
+        if (weekendSettings.sunday_off) weekendDays.push(0);
+        if (weekendSettings.monday_off) weekendDays.push(1);
+        if (weekendSettings.tuesday_off) weekendDays.push(2);
+        if (weekendSettings.wednesday_off) weekendDays.push(3);
+        if (weekendSettings.thursday_off) weekendDays.push(4);
+        if (weekendSettings.friday_off) weekendDays.push(5);
+        if (weekendSettings.saturday_off) weekendDays.push(6);
+      }
+    } catch (e) {
+      console.log('Weekend settings fetch error (non-critical):', e.message);
+    }
+
+    const logMap = {};
+    if (logs) {
+      logs.forEach(log => {
+        if (log.date) logMap[log.date] = log.status || 'Present';
+      });
     }
 
     for (let i = 1; i <= daysInMonth; i++) {
@@ -3116,9 +3126,16 @@ async function renderCalendar(logs) {
       html += `<div class="${className}">${i}</div>`;
     }
 
-    document.getElementById('cal-container').innerHTML = html;
+    const container = document.getElementById('cal-container');
+    if (container) {
+      container.innerHTML = html;
+    }
   } catch (err) {
     console.error('Error rendering calendar:', err);
+    const container = document.getElementById('cal-container');
+    if (container) {
+      container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Unable to load calendar</div>';
+    }
   }
 }
 
