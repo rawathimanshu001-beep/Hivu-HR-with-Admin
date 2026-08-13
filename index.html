@@ -3684,64 +3684,95 @@ let CALENDAR_STATE = {
 };
 
 function openCalendar(fieldId) {
-  CALENDAR_STATE.targetField = fieldId;
-  const existingDate = document.getElementById(fieldId).value;
-  if (existingDate) {
-    const date = new Date(existingDate);
-    CALENDAR_STATE.currentMonth = date.getMonth();
-    CALENDAR_STATE.currentYear = date.getFullYear();
-    CALENDAR_STATE.selectedDate = date;
+  try {
+    const overlayEl = document.getElementById('calendar-overlay');
+    const datesEl = document.getElementById('calendar-dates');
+
+    if (!overlayEl || !datesEl) {
+      console.error('Calendar elements not found');
+      return;
+    }
+
+    CALENDAR_STATE.targetField = fieldId;
+    const existingDate = document.getElementById(fieldId).value;
+    if (existingDate) {
+      const date = new Date(existingDate);
+      CALENDAR_STATE.currentMonth = date.getMonth();
+      CALENDAR_STATE.currentYear = date.getFullYear();
+      CALENDAR_STATE.selectedDate = date;
+    }
+
+    renderCalendar();
+    overlayEl.classList.add('open');
+  } catch (err) {
+    console.error('Error opening calendar:', err);
   }
-  renderCalendar();
-  document.getElementById('calendar-overlay').classList.add('open');
 }
 
 function closeCalendar() {
-  document.getElementById('calendar-overlay').classList.remove('open');
+  try {
+    const overlayEl = document.getElementById('calendar-overlay');
+    if (overlayEl) {
+      overlayEl.classList.remove('open');
+    }
+  } catch (err) {
+    console.error('Error closing calendar:', err);
+  }
 }
 
 function renderCalendar() {
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const year = CALENDAR_STATE.currentYear;
-  const month = CALENDAR_STATE.currentMonth;
+  try {
+    const monthYearEl = document.getElementById('calendar-month-year');
+    const datesEl = document.getElementById('calendar-dates');
 
-  document.getElementById('calendar-month-year').textContent =
-    `${monthNames[month]}, ${year}`;
+    if (!monthYearEl || !datesEl) {
+      console.error('Calendar display elements not found');
+      return;
+    }
 
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const daysInPrevMonth = new Date(year, month, 0).getDate();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const year = CALENDAR_STATE.currentYear;
+    const month = CALENDAR_STATE.currentMonth;
 
-  let html = '';
+    monthYearEl.textContent = `${monthNames[month]}, ${year}`;
 
-  // Previous month dates
-  for (let i = firstDay - 1; i >= 0; i--) {
-    html += `<div class="calendar-date other-month">${daysInPrevMonth - i}</div>`;
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+    let html = '';
+
+    // Previous month dates
+    for (let i = firstDay - 1; i >= 0; i--) {
+      html += `<div class="calendar-date other-month">${daysInPrevMonth - i}</div>`;
+    }
+
+    // Current month dates
+    const today = new Date();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const isToday = date.toDateString() === today.toDateString();
+      const isSelected = CALENDAR_STATE.selectedDate &&
+                         date.toDateString() === CALENDAR_STATE.selectedDate.toDateString();
+
+      let classes = 'calendar-date';
+      if (isToday) classes += ' today';
+      if (isSelected) classes += ' selected';
+
+      html += `<div class="${classes}" onclick="selectCalendarDate(${day})">${day}</div>`;
+    }
+
+    // Next month dates
+    const totalCells = firstDay + daysInMonth;
+    const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (let i = 1; i <= remainingCells; i++) {
+      html += `<div class="calendar-date other-month">${i}</div>`;
+    }
+
+    datesEl.innerHTML = html;
+  } catch (err) {
+    console.error('Error rendering calendar:', err);
   }
-
-  // Current month dates
-  const today = new Date();
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month, day);
-    const isToday = date.toDateString() === today.toDateString();
-    const isSelected = CALENDAR_STATE.selectedDate &&
-                       date.toDateString() === CALENDAR_STATE.selectedDate.toDateString();
-
-    let classes = 'calendar-date';
-    if (isToday) classes += ' today';
-    if (isSelected) classes += ' selected';
-
-    html += `<div class="${classes}" onclick="selectCalendarDate(${day})">${day}</div>`;
-  }
-
-  // Next month dates
-  const totalCells = firstDay + daysInMonth;
-  const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-  for (let i = 1; i <= remainingCells; i++) {
-    html += `<div class="calendar-date other-month">${i}</div>`;
-  }
-
-  document.getElementById('calendar-dates').innerHTML = html;
 }
 
 function selectCalendarDate(day) {
