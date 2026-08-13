@@ -938,6 +938,61 @@ input[type="date"]::-webkit-inner-spin-button {
   gap: 8px;
 }
 
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.cal-day-empty {
+  background: transparent;
+  color: var(--muted);
+  opacity: 0.3;
+}
+
+.cal-day.present {
+  background: rgba(0, 200, 83, 0.2);
+  color: var(--green);
+  border: 1px solid rgba(0, 200, 83, 0.4);
+}
+
+.cal-day.late {
+  background: rgba(255, 165, 0, 0.2);
+  color: var(--orange);
+  border: 1px solid rgba(255, 165, 0, 0.4);
+}
+
+.cal-day.absent {
+  background: rgba(255, 77, 106, 0.2);
+  color: var(--red);
+  border: 1px solid rgba(255, 77, 106, 0.4);
+}
+
+.cal-day.leave {
+  background: rgba(0, 102, 255, 0.2);
+  color: var(--primary);
+  border: 1px solid rgba(0, 102, 255, 0.4);
+}
+
+.cal-day.weekend {
+  background: rgba(100, 100, 150, 0.15);
+  color: var(--muted);
+  border: 1px solid rgba(100, 100, 150, 0.3);
+  opacity: 0.6;
+}
+
+.cal-day.today {
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 12px rgba(0, 102, 255, 0.3);
+}
+
 .cal-day-hdr {
   text-align: center;
   font-size: 11px;
@@ -2225,6 +2280,31 @@ body.light-mode .leaflet-tile {
         <div class="cal-grid" id="cal-container"></div>
       </div>
 
+      <div style="padding:0 16px;margin-top:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:16px;height:16px;background:rgba(0,200,83,0.2);border:1px solid rgba(0,200,83,0.4);border-radius:4px"></div>
+            <span style="color:var(--muted)">On Time</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:16px;height:16px;background:rgba(255,165,0,0.2);border:1px solid rgba(255,165,0,0.4);border-radius:4px"></div>
+            <span style="color:var(--muted)">Late</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:16px;height:16px;background:rgba(255,77,106,0.2);border:1px solid rgba(255,77,106,0.4);border-radius:4px"></div>
+            <span style="color:var(--muted)">Absent</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:16px;height:16px;background:rgba(0,102,255,0.2);border:1px solid rgba(0,102,255,0.4);border-radius:4px"></div>
+            <span style="color:var(--muted)">Leave/Holiday</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;grid-column:1">
+            <div style="width:16px;height:16px;background:rgba(100,100,150,0.15);border:1px solid rgba(100,100,150,0.3);border-radius:4px;opacity:0.6"></div>
+            <span style="color:var(--muted)">Weekend</span>
+          </div>
+        </div>
+      </div>
+
       <div style="padding:0 16px">
         <div class="section-title">Recent logs</div>
       </div>
@@ -2827,7 +2907,7 @@ async function loadAttendanceData() {
 
       document.getElementById('stat-leave').textContent = Math.max(0, 12 - Object.keys(dateMap).length);
 
-      renderCalendar(data);
+      await renderCalendar(data);
       renderAttendanceLogs(data);
       await calculateMissingAttendance(dateMap);
     }
@@ -2949,44 +3029,97 @@ async function refreshAttendanceData() {
   }
 }
 
-function renderCalendar(logs) {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
+async function renderCalendar(logs) {
+  try {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
 
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  let html = '';
-  const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  days.forEach(d => html += `<div class="cal-day-hdr">${d}</div>`);
+    let html = '';
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    days.forEach(d => html += `<div class="cal-day-hdr">${d}</div>`);
 
-  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
+    for (let i = 0; i < firstDay; i++) html += '<div class="cal-day cal-day-empty"></div>';
 
-  const logMap = {};
-  logs.forEach(log => {
-    if (log.date) logMap[log.date.slice(8)] = log.status || 'Present';
-  });
+    const empId = localStorage.getItem('auth_emp_id');
 
-  for (let i = 1; i <= daysInMonth; i++) {
-    const date = String(i).padStart(2, '0');
-    const status = logMap[date];
-    const isToday = i === today.getDate();
-    let className = 'cal-day';
+    // Fetch leave requests for this month
+    const { data: leaves } = await supabaseClient
+      .from('leave_requests')
+      .select('from_date,to_date')
+      .eq('emp_id', empId)
+      .eq('status', 'Approved')
+      .gte('from_date', monthStr + '-01')
+      .lte('to_date', monthStr + '-31');
 
-    if (status) {
-      if (status === 'Present') className += ' present';
-      else if (status === 'Absent') className += ' absent';
-      else if (status === 'Late') className += ' late';
-      else if (status === 'Leave') className += ' leave';
+    // Fetch weekend settings
+    const { data: weekendSettings } = await supabaseClient
+      .from('weekend_settings')
+      .select('*')
+      .limit(1)
+      .single();
+
+    const logMap = {};
+    logs.forEach(log => {
+      if (log.date) logMap[log.date] = log.status || 'Present';
+    });
+
+    const leaveSet = new Set();
+    if (leaves) {
+      leaves.forEach(leave => {
+        const from = new Date(leave.from_date);
+        const to = new Date(leave.to_date);
+        for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+          leaveSet.add(d.toISOString().split('T')[0]);
+        }
+      });
     }
 
-    if (isToday) className += ' today';
+    const weekendDays = [];
+    if (weekendSettings) {
+      if (weekendSettings.sunday_off) weekendDays.push(0);
+      if (weekendSettings.monday_off) weekendDays.push(1);
+      if (weekendSettings.tuesday_off) weekendDays.push(2);
+      if (weekendSettings.wednesday_off) weekendDays.push(3);
+      if (weekendSettings.thursday_off) weekendDays.push(4);
+      if (weekendSettings.friday_off) weekendDays.push(5);
+      if (weekendSettings.saturday_off) weekendDays.push(6);
+    }
 
-    html += `<div class="${className}">${i}</div>`;
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      const dayOfWeek = new Date(year, month, i).getDay();
+      const isToday = i === today.getDate();
+      let className = 'cal-day';
+
+      const status = logMap[dateStr];
+      const isLeave = leaveSet.has(dateStr);
+      const isWeekend = weekendDays.includes(dayOfWeek);
+
+      if (isLeave) {
+        className += ' leave';
+      } else if (isWeekend) {
+        className += ' weekend';
+      } else if (status) {
+        if (status === 'Present') className += ' present';
+        else if (status === 'Absent') className += ' absent';
+        else if (status === 'Late') className += ' late';
+        else if (status === 'Short Day') className += ' late';
+      }
+
+      if (isToday) className += ' today';
+
+      html += `<div class="${className}">${i}</div>`;
+    }
+
+    document.getElementById('cal-container').innerHTML = html;
+  } catch (err) {
+    console.error('Error rendering calendar:', err);
   }
-
-  document.getElementById('cal-container').innerHTML = html;
 }
 
 function renderAttendanceLogs(logs) {
