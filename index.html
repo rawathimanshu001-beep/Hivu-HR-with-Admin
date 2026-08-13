@@ -938,6 +938,61 @@ input[type="date"]::-webkit-inner-spin-button {
   gap: 8px;
 }
 
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.cal-day-empty {
+  background: transparent;
+  color: var(--muted);
+  opacity: 0.3;
+}
+
+.cal-day.present {
+  background: rgba(0, 200, 83, 0.2);
+  color: var(--green);
+  border: 1px solid rgba(0, 200, 83, 0.4);
+}
+
+.cal-day.late {
+  background: rgba(255, 165, 0, 0.2);
+  color: var(--orange);
+  border: 1px solid rgba(255, 165, 0, 0.4);
+}
+
+.cal-day.absent {
+  background: rgba(255, 77, 106, 0.2);
+  color: var(--red);
+  border: 1px solid rgba(255, 77, 106, 0.4);
+}
+
+.cal-day.leave {
+  background: rgba(0, 102, 255, 0.2);
+  color: var(--primary);
+  border: 1px solid rgba(0, 102, 255, 0.4);
+}
+
+.cal-day.weekend {
+  background: rgba(100, 100, 150, 0.15);
+  color: var(--muted);
+  border: 1px solid rgba(100, 100, 150, 0.3);
+  opacity: 0.6;
+}
+
+.cal-day.today {
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 12px rgba(0, 102, 255, 0.3);
+}
+
 .cal-day-hdr {
   text-align: center;
   font-size: 11px;
@@ -2123,15 +2178,15 @@ body.light-mode .leaflet-tile {
           <div class="form-group">
             <label class="form-label">From date</label>
             <div class="date-input-wrapper">
-              <input type="text" class="form-input date-input" id="leave-from" placeholder="Select date" readonly onclick="openCalendar('leave-from')">
-              <i class="ti ti-calendar date-input-icon"></i>
+              <input type="text" class="form-input date-input" id="leave-from" data-calendar-field="leave-from" placeholder="Select date" readonly>
+              <i class="ti ti-calendar date-input-icon" data-calendar-field="leave-from"></i>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">To date</label>
             <div class="date-input-wrapper">
-              <input type="text" class="form-input date-input" id="leave-to" placeholder="Select date" readonly onclick="openCalendar('leave-to')">
-              <i class="ti ti-calendar date-input-icon"></i>
+              <input type="text" class="form-input date-input" id="leave-to" data-calendar-field="leave-to" placeholder="Select date" readonly>
+              <i class="ti ti-calendar date-input-icon" data-calendar-field="leave-to"></i>
             </div>
           </div>
           <div class="form-group">
@@ -2171,6 +2226,7 @@ body.light-mode .leaflet-tile {
           <div class="slip-head-name" id="slip-name">—</div>
           <div class="slip-head-sub" id="slip-sub">—</div>
         </div>
+        <div id="slip-attendance" style="padding:10px 14px;font-size:11px;color:var(--muted);background:rgba(0,102,255,0.05);display:none"></div>
         <div style="padding:12px 14px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;background:var(--navy)">Earnings</div>
         <div class="slip-row">
           <span class="slip-row-label">Basic salary</span>
@@ -2180,6 +2236,14 @@ body.light-mode .leaflet-tile {
           <span class="slip-row-label">HRA</span>
           <span class="slip-row-val" id="slip-hra">₹—</span>
         </div>
+        <div class="slip-row">
+          <span class="slip-row-label">DA</span>
+          <span class="slip-row-val" id="slip-da">₹—</span>
+        </div>
+        <div class="slip-row">
+          <span class="slip-row-label">Other allowances</span>
+          <span class="slip-row-val" id="slip-allowances">₹—</span>
+        </div>
         <div class="slip-row" style="border-bottom:1px solid rgba(0,102,255,0.1);font-weight:700">
           <span class="slip-row-label">Gross</span>
           <span class="slip-row-val" id="slip-gross">₹—</span>
@@ -2188,6 +2252,18 @@ body.light-mode .leaflet-tile {
         <div class="slip-row">
           <span class="slip-row-label">PF Deduction</span>
           <span class="slip-row-val" id="slip-pf" style="color:var(--red)">₹—</span>
+        </div>
+        <div class="slip-row">
+          <span class="slip-row-label">ESI</span>
+          <span class="slip-row-val" id="slip-esi" style="color:var(--red)">₹—</span>
+        </div>
+        <div class="slip-row">
+          <span class="slip-row-label">Insurance</span>
+          <span class="slip-row-val" id="slip-insurance" style="color:var(--red)">₹—</span>
+        </div>
+        <div class="slip-row">
+          <span class="slip-row-label">Attendance penalty</span>
+          <span class="slip-row-val" id="slip-penalty" style="color:var(--red)">₹—</span>
         </div>
         <div class="slip-row" style="border-bottom:2px solid rgba(0,102,255,0.2);font-weight:700">
           <span class="slip-row-label">Total deductions</span>
@@ -2223,6 +2299,31 @@ body.light-mode .leaflet-tile {
 
       <div class="cal-wrapper">
         <div class="cal-grid" id="cal-container"></div>
+      </div>
+
+      <div style="padding:0 16px;margin-top:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:16px;height:16px;background:rgba(0,200,83,0.2);border:1px solid rgba(0,200,83,0.4);border-radius:4px"></div>
+            <span style="color:var(--muted)">On Time</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:16px;height:16px;background:rgba(255,165,0,0.2);border:1px solid rgba(255,165,0,0.4);border-radius:4px"></div>
+            <span style="color:var(--muted)">Late</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:16px;height:16px;background:rgba(255,77,106,0.2);border:1px solid rgba(255,77,106,0.4);border-radius:4px"></div>
+            <span style="color:var(--muted)">Absent</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:16px;height:16px;background:rgba(0,102,255,0.2);border:1px solid rgba(0,102,255,0.4);border-radius:4px"></div>
+            <span style="color:var(--muted)">Leave/Holiday</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;grid-column:1">
+            <div style="width:16px;height:16px;background:rgba(100,100,150,0.15);border:1px solid rgba(100,100,150,0.3);border-radius:4px;opacity:0.6"></div>
+            <span style="color:var(--muted)">Weekend</span>
+          </div>
+        </div>
       </div>
 
       <div style="padding:0 16px">
@@ -2462,6 +2563,12 @@ const STATE = {
 
 let supabaseClient;
 
+// Local-timezone date string (YYYY-MM-DD). NEVER use toISOString() for dates —
+// it shifts to UTC and moves the date back a day in IST.
+function toLocalDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 async function initSupabase() {
   if (!window.HIVU_CONFIG || !HIVU_CONFIG.supabaseUrl || !HIVU_CONFIG.supabaseKey) {
     console.error('Supabase credentials not configured');
@@ -2498,11 +2605,15 @@ async function sendOTP() {
   }
 
   try {
-    const { data, error } = await supabaseClient
+    // Match on the last 10 digits so "+91 75033 37659", "917503337659" and
+    // "7503337659" all find the same employee record.
+    const tenDigits = phoneDigits.slice(-10);
+    const { data: matches, error } = await supabaseClient
       .from('employees')
       .select('*')
-      .eq('phone', phone)
-      .single();
+      .like('phone', '%' + tenDigits);
+
+    const data = matches && matches.find(e => String(e.phone).replace(/\D/g, '').slice(-10) === tenDigits);
 
     if (error || !data) {
       showToast('Employee not found. Contact HR.');
@@ -2582,8 +2693,7 @@ async function loadUserData() {
 
 async function restoreClockState() {
   const empId = localStorage.getItem('auth_emp_id');
-  const now = new Date();
-  const today = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+  const today = toLocalDateStr(new Date());
 
   try {
     const { data, error } = await supabaseClient
@@ -2706,10 +2816,8 @@ async function updateUIWithUserData(user) {
   document.getElementById('slip-sub').textContent =
     `${user.emp_id} · ${user.designation || '—'}`;
 
-  // Load work settings when profile loads
-  if (STATE.currentPage === 'profile') {
-    await loadWorkSettings();
-  }
+  const profileIdEl = document.getElementById('profile-id');
+  if (profileIdEl) profileIdEl.textContent = user.emp_id || '—';
 }
 
 async function loadCelebrations() {
@@ -2791,147 +2899,164 @@ async function loadCelebrations() {
   }
 }
 
-async function loadAttendanceData() {
+// Higher number wins when a date has multiple records
+const STATUS_PRIORITY = { 'Leave': 5, 'Holiday': 5, 'Present': 4, 'Late': 4, 'Short Day': 4, 'Missing Clock Out': 3, 'Absent': 1 };
+
+async function loadAttendanceData(skipAutoMark) {
   const empId = localStorage.getItem('auth_emp_id');
-  const currentMonth = new Date().toISOString().split('T')[0].slice(0, 7);
+  const now = new Date();
+  const monthStart = toLocalDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
+  const monthEnd = toLocalDateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
   try {
-    const { data } = await supabaseClient
-      .from('attendance_logs')
-      .select('*')
-      .eq('emp_id', empId)
-      .gte('date', currentMonth + '-01');
+    const [logsRes, holidaysRes, weekendRes, leavesRes] = await Promise.all([
+      supabaseClient.from('attendance_logs').select('*')
+        .eq('emp_id', empId).gte('date', monthStart).lte('date', monthEnd),
+      supabaseClient.from('company_holidays').select('date')
+        .gte('date', monthStart).lte('date', monthEnd),
+      supabaseClient.from('weekend_settings').select('*').limit(1).single(),
+      supabaseClient.from('leave_requests').select('from_date, to_date')
+        .eq('emp_id', empId).eq('status', 'Approved')
+        .lte('from_date', monthEnd).gte('to_date', monthStart)
+    ]);
 
-    if (data) {
-      const dateMap = {};
-      data.forEach(record => {
-        if (record.date && !dateMap[record.date]) {
-          dateMap[record.date] = record.status || 'Present';
-        }
-      });
+    const data = logsRes.data || [];
+    const holidaySet = new Set((holidaysRes.data || []).map(h => h.date));
+    const ws = weekendRes.data || {};
+    const offDays = [ws.sunday_off, ws.monday_off, ws.tuesday_off, ws.wednesday_off,
+                     ws.thursday_off, ws.friday_off, ws.saturday_off]; // index = getDay()
 
-      const stats = {present: 0, absent: 0, late: 0, leave: 0};
-      Object.values(dateMap).forEach(status => {
-        if (status === 'Present') stats.present++;
-        else if (status === 'Late') stats.late++;
-        else if (status === 'Absent') stats.absent++;
-        else if (status === 'Leave') stats.leave++;
-      });
+    // Expand approved leaves into a set of dates
+    const leaveSet = new Set();
+    (leavesRes.data || []).forEach(l => {
+      const from = new Date(l.from_date + 'T00:00:00');
+      const to = new Date(l.to_date + 'T00:00:00');
+      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+        leaveSet.add(toLocalDateStr(d));
+      }
+    });
 
-      document.getElementById('stat-present').textContent = stats.present;
-      document.getElementById('stat-absent').textContent = stats.absent;
-      document.getElementById('att-present').textContent = stats.present;
-      document.getElementById('att-absent').textContent = stats.absent;
-      document.getElementById('att-late').textContent = stats.late;
-      document.getElementById('att-leave').textContent = stats.leave;
+    // Best status per date from logs (highest priority wins)
+    const dateMap = {};
+    data.forEach(record => {
+      if (!record.date) return;
+      const status = record.status || 'Present';
+      const current = dateMap[record.date];
+      if (!current || (STATUS_PRIORITY[status] || 0) > (STATUS_PRIORITY[current] || 0)) {
+        dateMap[record.date] = status;
+      }
+    });
 
-      document.getElementById('stat-leave').textContent = Math.max(0, 12 - Object.keys(dateMap).length);
+    // Final per-day status for calendar & stats: leave > holiday > weekend > logs
+    const dayStatus = {};
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), i);
+      const dateStr = toLocalDateStr(d);
+      if (leaveSet.has(dateStr)) dayStatus[dateStr] = 'Leave';
+      else if (holidaySet.has(dateStr)) dayStatus[dateStr] = 'Holiday';
+      else if (offDays[d.getDay()]) dayStatus[dateStr] = 'Weekend';
+      else if (dateMap[dateStr]) dayStatus[dateStr] = dateMap[dateStr];
+    }
 
-      renderCalendar(data);
-      renderAttendanceLogs(data);
-      await calculateMissingAttendance(dateMap);
+    const stats = {present: 0, absent: 0, late: 0, leave: 0};
+    Object.values(dayStatus).forEach(status => {
+      if (status === 'Present' || status === 'Short Day') stats.present++;
+      else if (status === 'Late') stats.late++;
+      else if (status === 'Absent') stats.absent++;
+      else if (status === 'Leave') stats.leave++;
+    });
+
+    document.getElementById('stat-present').textContent = stats.present;
+    document.getElementById('stat-absent').textContent = stats.absent;
+    document.getElementById('att-present').textContent = stats.present;
+    document.getElementById('att-absent').textContent = stats.absent;
+    document.getElementById('att-late').textContent = stats.late;
+    document.getElementById('att-leave').textContent = stats.leave;
+
+    loadLeaveLeftStat();
+
+    renderCalendar(dayStatus);
+    renderAttendanceLogs(data);
+
+    if (!skipAutoMark) {
+      const changed = await calculateMissingAttendance(dateMap, dayStatus, empId);
+      if (changed) await loadAttendanceData(true); // re-render once, never loops
     }
   } catch (err) {
     console.error(err);
   }
 }
 
-async function calculateMissingAttendance(dateMap) {
-  const empId = localStorage.getItem('auth_emp_id');
+async function loadLeaveLeftStat() {
+  try {
+    const empId = localStorage.getItem('auth_emp_id');
+    const { data: balances } = await supabaseClient
+      .from('employee_leave_balance')
+      .select('balance, used')
+      .eq('emp_id', empId);
+    let left = 0;
+    (balances || []).forEach(b => { left += (b.balance || 0) - (b.used || 0); });
+    document.getElementById('stat-leave').textContent = Math.max(0, left);
+  } catch (err) {
+    console.log('Leave balance stat unavailable');
+  }
+}
+
+// Marks past working days with no record as Absent, and cleans up Absent rows
+// wrongly created on off-days. Returns true only if it actually changed data.
+async function calculateMissingAttendance(dateMap, dayStatus, empId) {
   const today = new Date();
-  const currentMonth = new Date().toISOString().split('T')[0].slice(0, 7);
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const todayStr = toLocalDateStr(today);
 
   try {
-    const { data: holidays } = await supabaseClient
-      .from('company_holidays')
-      .select('date')
-      .gte('date', currentMonth + '-01')
-      .lte('date', currentMonth + '-31');
-
-    const { data: weekendSettings } = await supabaseClient
-      .from('weekend_settings')
-      .select('*')
-      .limit(1)
-      .single();
-
-    const holidaySet = new Set(holidays ? holidays.map(h => h.date) : []);
-    const monOff = weekendSettings?.monday_off ?? false;
-    const tueOff = weekendSettings?.tuesday_off ?? false;
-    const wedOff = weekendSettings?.wednesday_off ?? false;
-    const thuOff = weekendSettings?.thursday_off ?? false;
-    const friOff = weekendSettings?.friday_off ?? false;
-    const satOff = weekendSettings?.saturday_off ?? false;
-    const sunOff = weekendSettings?.sunday_off ?? false;
-
-    const weekendDates = [];
+    const wrongAbsentDates = [];
     const missingDates = [];
 
-    for (let d = new Date(firstDay); d <= lastDay && d <= today; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
-      const dayOfWeek = d.getDay();
+    Object.keys(dayStatus).forEach(dateStr => {
+      const status = dayStatus[dateStr];
+      const isOffDay = status === 'Weekend' || status === 'Holiday' || status === 'Leave';
+      if (isOffDay && dateMap[dateStr] === 'Absent') {
+        wrongAbsentDates.push(dateStr);
+      }
+    });
 
-      const isOff =
-        (dayOfWeek === 1 && monOff) ||
-        (dayOfWeek === 2 && tueOff) ||
-        (dayOfWeek === 3 && wedOff) ||
-        (dayOfWeek === 4 && thuOff) ||
-        (dayOfWeek === 5 && friOff) ||
-        (dayOfWeek === 6 && satOff) ||
-        (dayOfWeek === 0 && sunOff);
-
-      const isHoliday = holidaySet.has(dateStr);
-
-      if (isOff) {
-        weekendDates.push(dateStr);
-      } else if (!dateMap[dateStr] && !isHoliday) {
+    // Only days strictly BEFORE today can be auto-marked absent
+    const now = new Date();
+    for (let i = 1; i <= today.getDate() - 1; i++) {
+      const dateStr = toLocalDateStr(new Date(now.getFullYear(), now.getMonth(), i));
+      if (!dayStatus[dateStr] && !dateMap[dateStr]) {
         missingDates.push(dateStr);
       }
     }
 
     let dataChanged = false;
 
-    if (weekendDates.length > 0) {
-      for (const dateStr of weekendDates) {
-        await supabaseClient
-          .from('attendance_logs')
-          .delete()
-          .eq('emp_id', empId)
-          .eq('date', dateStr)
-          .eq('status', 'Absent');
-      }
+    if (wrongAbsentDates.length > 0) {
+      await supabaseClient
+        .from('attendance_logs')
+        .delete()
+        .eq('emp_id', empId)
+        .eq('status', 'Absent')
+        .in('date', wrongAbsentDates);
       dataChanged = true;
     }
 
     if (missingDates.length > 0) {
-      for (const dateStr of missingDates) {
-        const { data: existing } = await supabaseClient
-          .from('attendance_logs')
-          .select('id')
-          .eq('emp_id', empId)
-          .eq('date', dateStr)
-          .single();
-
-        if (!existing) {
-          await supabaseClient
-            .from('attendance_logs')
-            .insert([{
-              emp_id: empId,
-              date: dateStr,
-              status: 'Absent',
-              remarks: 'Auto-marked due to no clock-in'
-            }]);
-        }
-      }
+      const rows = missingDates.map(dateStr => ({
+        emp_id: empId,
+        date: dateStr,
+        status: 'Absent',
+        remarks: 'Auto-marked due to no clock-in'
+      }));
+      await supabaseClient.from('attendance_logs').insert(rows);
       dataChanged = true;
     }
 
-    if (dataChanged) {
-      await loadAttendanceData();
-    }
+    return dataChanged;
   } catch (err) {
-    console.log('Absence calculation completed or no holidays found');
+    console.log('Absence auto-mark skipped:', err?.message);
+    return false;
   }
 }
 
@@ -2949,44 +3074,49 @@ async function refreshAttendanceData() {
   }
 }
 
-function renderCalendar(logs) {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
+function renderCalendar(dayStatus) {
+  try {
+    const container = document.getElementById('cal-container');
+    if (!container) return;
 
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  let html = '';
-  const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  days.forEach(d => html += `<div class="cal-day-hdr">${d}</div>`);
+    const statusClass = {
+      'Present': 'present',
+      'Short Day': 'late',
+      'Late': 'late',
+      'Absent': 'absent',
+      'Missing Clock Out': 'late',
+      'Leave': 'leave',
+      'Holiday': 'leave',
+      'Weekend': 'weekend'
+    };
 
-  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
-
-  const logMap = {};
-  logs.forEach(log => {
-    if (log.date) logMap[log.date.slice(8)] = log.status || 'Present';
-  });
-
-  for (let i = 1; i <= daysInMonth; i++) {
-    const date = String(i).padStart(2, '0');
-    const status = logMap[date];
-    const isToday = i === today.getDate();
-    let className = 'cal-day';
-
-    if (status) {
-      if (status === 'Present') className += ' present';
-      else if (status === 'Absent') className += ' absent';
-      else if (status === 'Late') className += ' late';
-      else if (status === 'Leave') className += ' leave';
+    let html = '';
+    ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => {
+      html += `<div class="cal-day-hdr">${d}</div>`;
+    });
+    for (let i = 0; i < firstDay; i++) {
+      html += '<div class="cal-day cal-day-empty"></div>';
     }
 
-    if (isToday) className += ' today';
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      let className = 'cal-day';
+      const status = dayStatus[dateStr];
+      if (status && statusClass[status]) className += ' ' + statusClass[status];
+      if (i === today.getDate()) className += ' today';
+      html += `<div class="${className}" title="${status || ''}">${i}</div>`;
+    }
 
-    html += `<div class="${className}">${i}</div>`;
+    container.innerHTML = html;
+  } catch (err) {
+    console.error('Error rendering calendar:', err);
   }
-
-  document.getElementById('cal-container').innerHTML = html;
 }
 
 function renderAttendanceLogs(logs) {
@@ -3337,7 +3467,7 @@ async function confirmClock() {
   const now = new Date();
   const empId = localStorage.getItem('auth_emp_id');
   const clockInTimeStr = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true});
-  const localDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+  const localDate = toLocalDateStr(now);
 
   try {
     const { error } = await supabaseClient
@@ -3423,7 +3553,7 @@ async function proceedClockOut() {
   const mins = Math.floor((elapsedMs % 3600000) / 60000);
   const totalHours = hours + (mins / 60);
   const clockOutTimeStr = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true});
-  const localDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+  const localDate = toLocalDateStr(now);
 
   try {
     const today = localDate;
@@ -3541,9 +3671,40 @@ async function loadLeaveTypes() {
       data.forEach(type => {
         select.innerHTML += `<option value="${type.id}">${type.name}</option>`;
       });
+      select.onchange = updateLeaveAvailable;
     }
   } catch (err) {
     console.log('Error loading leave types');
+  }
+}
+
+// Shows remaining balance for the selected leave type in the Apply form
+async function updateLeaveAvailable() {
+  const availEl = document.getElementById('leave-available');
+  const typeId = document.getElementById('leave-type').value;
+  const empId = localStorage.getItem('auth_emp_id');
+  if (!typeId || !empId) { availEl.textContent = '—'; return; }
+
+  try {
+    const { data: balances } = await supabaseClient
+      .from('employee_leave_balance')
+      .select('balance, used')
+      .eq('emp_id', empId)
+      .eq('leave_type_id', typeId)
+      .limit(1);
+
+    if (balances && balances.length > 0) {
+      const remaining = (balances[0].balance || 0) - (balances[0].used || 0);
+      availEl.textContent = `${Math.max(0, remaining)} days`;
+      availEl.dataset.remaining = Math.max(0, remaining);
+    } else {
+      const { data: type } = await supabaseClient
+        .from('leave_types').select('days_per_year').eq('id', typeId).single();
+      availEl.textContent = `${type?.days_per_year || 0} days`;
+      availEl.dataset.remaining = type?.days_per_year || 0;
+    }
+  } catch (err) {
+    availEl.textContent = '—';
   }
 }
 
@@ -3684,69 +3845,132 @@ let CALENDAR_STATE = {
 };
 
 function openCalendar(fieldId) {
-  CALENDAR_STATE.targetField = fieldId;
-  const existingDate = document.getElementById(fieldId).value;
-  if (existingDate) {
-    const date = new Date(existingDate);
-    CALENDAR_STATE.currentMonth = date.getMonth();
-    CALENDAR_STATE.currentYear = date.getFullYear();
-    CALENDAR_STATE.selectedDate = date;
+  try {
+    const overlayEl = document.getElementById('calendar-overlay');
+    const datesEl = document.getElementById('calendar-dates');
+
+    if (!overlayEl || !datesEl) {
+      console.error('Calendar elements not found');
+      return;
+    }
+
+    CALENDAR_STATE.targetField = fieldId;
+    const existingDate = document.getElementById(fieldId).value;
+    if (existingDate) {
+      const date = new Date(existingDate);
+      CALENDAR_STATE.currentMonth = date.getMonth();
+      CALENDAR_STATE.currentYear = date.getFullYear();
+      CALENDAR_STATE.selectedDate = date;
+    }
+
+    renderLeaveCalendar();
+    overlayEl.classList.add('open');
+  } catch (err) {
+    console.error('Error opening calendar:', err);
   }
-  renderCalendar();
-  document.getElementById('calendar-overlay').classList.add('open');
 }
 
 function closeCalendar() {
-  document.getElementById('calendar-overlay').classList.remove('open');
+  try {
+    const overlayEl = document.getElementById('calendar-overlay');
+    if (overlayEl) {
+      overlayEl.classList.remove('open');
+    }
+  } catch (err) {
+    console.error('Error closing calendar:', err);
+  }
 }
 
-function renderCalendar() {
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const year = CALENDAR_STATE.currentYear;
-  const month = CALENDAR_STATE.currentMonth;
+function initCalendarEventListeners() {
+  try {
+    const dateInputs = document.querySelectorAll('[data-calendar-field]');
+    const calendarOverlay = document.getElementById('calendar-overlay');
+    const calendarModal = document.querySelector('.calendar-modal');
 
-  document.getElementById('calendar-month-year').textContent =
-    `${monthNames[month]}, ${year}`;
+    dateInputs.forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fieldId = el.getAttribute('data-calendar-field');
+        if (fieldId) {
+          openCalendar(fieldId);
+        }
+      });
+    });
 
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const daysInPrevMonth = new Date(year, month, 0).getDate();
+    if (calendarOverlay && calendarModal) {
+      calendarOverlay.addEventListener('click', (e) => {
+        if (e.target === calendarOverlay) {
+          closeCalendar();
+        }
+      });
 
-  let html = '';
-
-  // Previous month dates
-  for (let i = firstDay - 1; i >= 0; i--) {
-    html += `<div class="calendar-date other-month">${daysInPrevMonth - i}</div>`;
+      calendarModal.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
+  } catch (err) {
+    console.error('Error initializing calendar listeners:', err);
   }
+}
 
-  // Current month dates
-  const today = new Date();
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month, day);
-    const isToday = date.toDateString() === today.toDateString();
-    const isSelected = CALENDAR_STATE.selectedDate &&
-                       date.toDateString() === CALENDAR_STATE.selectedDate.toDateString();
+function renderLeaveCalendar() {
+  try {
+    const monthYearEl = document.getElementById('calendar-month-year');
+    const datesEl = document.getElementById('calendar-dates');
 
-    let classes = 'calendar-date';
-    if (isToday) classes += ' today';
-    if (isSelected) classes += ' selected';
+    if (!monthYearEl || !datesEl) {
+      console.error('Calendar display elements not found');
+      return;
+    }
 
-    html += `<div class="${classes}" onclick="selectCalendarDate(${day})">${day}</div>`;
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const year = CALENDAR_STATE.currentYear;
+    const month = CALENDAR_STATE.currentMonth;
+
+    monthYearEl.textContent = `${monthNames[month]}, ${year}`;
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+    let html = '';
+
+    // Previous month dates
+    for (let i = firstDay - 1; i >= 0; i--) {
+      html += `<div class="calendar-date other-month">${daysInPrevMonth - i}</div>`;
+    }
+
+    // Current month dates
+    const today = new Date();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const isToday = date.toDateString() === today.toDateString();
+      const isSelected = CALENDAR_STATE.selectedDate &&
+                         date.toDateString() === CALENDAR_STATE.selectedDate.toDateString();
+
+      let classes = 'calendar-date';
+      if (isToday) classes += ' today';
+      if (isSelected) classes += ' selected';
+
+      html += `<div class="${classes}" onclick="selectCalendarDate(${day})">${day}</div>`;
+    }
+
+    // Next month dates
+    const totalCells = firstDay + daysInMonth;
+    const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (let i = 1; i <= remainingCells; i++) {
+      html += `<div class="calendar-date other-month">${i}</div>`;
+    }
+
+    datesEl.innerHTML = html;
+  } catch (err) {
+    console.error('Error rendering calendar:', err);
   }
-
-  // Next month dates
-  const totalCells = firstDay + daysInMonth;
-  const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-  for (let i = 1; i <= remainingCells; i++) {
-    html += `<div class="calendar-date other-month">${i}</div>`;
-  }
-
-  document.getElementById('calendar-dates').innerHTML = html;
 }
 
 function selectCalendarDate(day) {
   CALENDAR_STATE.selectedDate = new Date(CALENDAR_STATE.currentYear, CALENDAR_STATE.currentMonth, day);
-  renderCalendar();
+  renderLeaveCalendar();
 }
 
 function confirmCalendarDate() {
@@ -3755,7 +3979,7 @@ function confirmCalendarDate() {
     return;
   }
 
-  const dateStr = CALENDAR_STATE.selectedDate.toISOString().split('T')[0];
+  const dateStr = toLocalDateStr(CALENDAR_STATE.selectedDate);
   const fieldId = CALENDAR_STATE.targetField;
   document.getElementById(fieldId).value = dateStr;
 
@@ -3779,7 +4003,7 @@ function calendarPrevMonth() {
   } else {
     CALENDAR_STATE.currentMonth--;
   }
-  renderCalendar();
+  renderLeaveCalendar();
 }
 
 function calendarNextMonth() {
@@ -3789,7 +4013,7 @@ function calendarNextMonth() {
   } else {
     CALENDAR_STATE.currentMonth++;
   }
-  renderCalendar();
+  renderLeaveCalendar();
 }
 
 function toggleMonthPicker() {
@@ -3822,9 +4046,16 @@ async function submitLeave() {
     return;
   }
 
-  try {
-    const days = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
+  const days = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
 
+  const availEl = document.getElementById('leave-available');
+  const remaining = parseFloat(availEl?.dataset?.remaining);
+  if (!isNaN(remaining) && days > remaining) {
+    showToast(`Only ${remaining} days available for this leave type`);
+    return;
+  }
+
+  try {
     const { error } = await supabaseClient
       .from('leave_requests')
       .insert({
@@ -4034,73 +4265,6 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
-async function loadWorkSettings() {
-  try {
-    const { data } = await supabaseClient
-      .from('company_settings')
-      .select('*')
-      .limit(1)
-      .single();
-
-    if (data) {
-      document.getElementById('set-work-start').value = data.work_start_time || '09:00';
-      document.getElementById('set-work-end').value = data.work_end_time || '18:00';
-      document.getElementById('set-min-hours').value = data.min_hours_per_day || 8;
-      document.getElementById('set-late-after').value = data.late_after_time || '09:30';
-      document.getElementById('set-penalty').value = data.penalty_per_late_hour || -100;
-      document.getElementById('set-short-day').value = data.short_day_threshold || 6;
-    }
-  } catch (err) {
-    console.log('Could not load settings');
-  }
-}
-
-async function saveWorkSettings() {
-  const workStart = document.getElementById('set-work-start').value;
-  const workEnd = document.getElementById('set-work-end').value;
-  const minHours = parseInt(document.getElementById('set-min-hours').value);
-  const lateAfter = document.getElementById('set-late-after').value;
-  const penalty = parseInt(document.getElementById('set-penalty').value);
-  const shortDay = parseInt(document.getElementById('set-short-day').value);
-
-  if (!workStart || !workEnd || !lateAfter) {
-    showToast('Please fill all fields');
-    return;
-  }
-
-  try {
-    const { error } = await supabaseClient
-      .from('company_settings')
-      .update({
-        work_start_time: workStart,
-        work_end_time: workEnd,
-        min_hours_per_day: minHours,
-        late_after_time: lateAfter,
-        penalty_per_late_hour: penalty,
-        short_day_threshold: shortDay,
-        updated_at: new Date()
-      })
-      .eq('id', (await supabaseClient.from('company_settings').select('id').limit(1).single()).data.id);
-
-    if (error) throw error;
-
-    // Update global settings
-    COMPANY_SETTINGS = {
-      work_start_time: workStart,
-      work_end_time: workEnd,
-      min_hours_per_day: minHours,
-      late_after_time: lateAfter,
-      penalty_per_late_hour: penalty,
-      short_day_threshold: shortDay
-    };
-
-    showToast('✅ Settings saved successfully!');
-  } catch (err) {
-    showToast('Failed to save settings');
-    console.error(err);
-  }
-}
-
 async function uploadProfilePhoto(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -4177,16 +4341,25 @@ async function populateMonthPicker() {
 
     html += `
       <button class="month-chip ${isCurrentMonth}"
-              onclick="loadPayslip('${monthValue}')">
+              onclick="loadPayslip('${monthValue}', this)">
         ${monthStr}
       </button>
     `;
   }
 
   monthPicker.innerHTML = html;
+
+  // Auto-load the current month's payslip
+  const currentValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  loadPayslip(currentValue, monthPicker.querySelector('.month-chip'));
 }
 
-async function loadPayslip(monthStr) {
+function setSlip(id, amount) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = `₹${Math.round(amount || 0).toLocaleString('en-IN')}`;
+}
+
+async function loadPayslip(monthStr, chipEl) {
   const empId = localStorage.getItem('auth_emp_id');
   if (!empId) return;
 
@@ -4199,38 +4372,104 @@ async function loadPayslip(monthStr) {
       .eq('emp_id', empId)
       .single();
 
-    const { data: settings } = await supabaseClient
-      .from('company_settings')
-      .select('*')
-      .limit(1)
-      .single();
-
     if (!emp) {
       document.getElementById('slip-name').textContent = 'Employee not found';
       return;
     }
 
-    const basic = emp.basic_salary || 0;
-    const hra = emp.hra || 0;
-    const pf = emp.pf_deduction || 0;
-    const gross = basic + hra;
-    const net = gross - pf;
-
     const monthName = new Date(year, parseInt(month) - 1).toLocaleString('default', { month: 'long' });
-
     document.getElementById('slip-name').textContent = emp.name || '—';
     document.getElementById('slip-sub').textContent = `${emp.emp_id} · ${emp.designation || '—'} · ${monthName} ${year}`;
-    document.getElementById('slip-basic').textContent = `₹${basic.toLocaleString('en-IN')}`;
-    document.getElementById('slip-hra').textContent = `₹${hra.toLocaleString('en-IN')}`;
-    document.getElementById('slip-gross').textContent = `₹${gross.toLocaleString('en-IN')}`;
-    document.getElementById('slip-pf').textContent = `₹${pf.toLocaleString('en-IN')}`;
-    document.getElementById('slip-total-ded').textContent = `₹${pf.toLocaleString('en-IN')}`;
-    document.getElementById('slip-net').textContent = `₹${net.toLocaleString('en-IN')}`;
+
+    const attEl = document.getElementById('slip-attendance');
+
+    // 1) Prefer the payslip generated by admin for this month
+    const { data: saved } = await supabaseClient
+      .from('payslips')
+      .select('*')
+      .eq('emp_id', empId)
+      .eq('month', monthStr)
+      .limit(1);
+
+    let slip;
+    if (saved && saved.length > 0) {
+      const p = saved[0];
+      slip = {
+        basic: p.basic_salary, hra: p.hra, da: p.da, allowances: p.other_allowances,
+        gross: p.gross_salary, pf: p.pf_deduction, esi: p.esi_deduction,
+        insurance: p.insurance_deduction,
+        penalty: (p.late_penalty || 0) + (p.absent_penalty || 0) + (p.short_day_penalty || 0),
+        totalDed: p.total_deductions, net: p.net_salary,
+        note: `✓ Official payslip · Present: ${p.present_days ?? '—'} | Late: ${p.late_days ?? '—'} | Absent: ${p.absent_days ?? '—'}`
+      };
+    } else {
+      // 2) Fallback: live estimate with the same formula the admin panel uses
+      const { data: settings } = await supabaseClient
+        .from('company_settings').select('*').limit(1).single();
+
+      const monthNum = parseInt(month);
+      const lastDay = new Date(year, monthNum, 0).getDate();
+      const monthEnd = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
+
+      const { data: logs } = await supabaseClient
+        .from('attendance_logs')
+        .select('status')
+        .eq('emp_id', empId)
+        .gte('date', monthStr + '-01')
+        .lte('date', monthEnd);
+
+      let lateDays = 0, absentDays = 0, shortDays = 0, presentDays = 0;
+      (logs || []).forEach(l => {
+        if (l.status === 'Late') lateDays++;
+        else if (l.status === 'Absent') absentDays++;
+        else if (l.status === 'Short Day') shortDays++;
+        else if (l.status === 'Present') presentDays++;
+      });
+
+      const basic = emp.basic_salary || 0;
+      const hra = emp.hra || 0;
+      const da = emp.da || 0;
+      const allowances = emp.other_allowances || 0;
+      const gross = basic + hra + da + allowances;
+      const perDay = gross / 30;
+
+      const pf = emp.pf_deduction || 0;
+      const esi = emp.esi_deduction || 0;
+      const insurance = emp.insurance_deduction || 0;
+      const penalty =
+        perDay * lateDays * ((settings?.penalty_per_late_pct || 2) / 100) +
+        perDay * absentDays * ((settings?.absent_penalty_pct || 5) / 100) +
+        perDay * shortDays * ((settings?.shortday_penalty_pct || 3) / 100);
+
+      const totalDed = pf + esi + insurance + penalty;
+      slip = {
+        basic, hra, da, allowances, gross, pf, esi, insurance, penalty,
+        totalDed, net: gross - totalDed,
+        note: `Estimate (admin has not generated this month yet) · Present: ${presentDays} | Late: ${lateDays} | Absent: ${absentDays}`
+      };
+    }
+
+    setSlip('slip-basic', slip.basic);
+    setSlip('slip-hra', slip.hra);
+    setSlip('slip-da', slip.da);
+    setSlip('slip-allowances', slip.allowances);
+    setSlip('slip-gross', slip.gross);
+    setSlip('slip-pf', slip.pf);
+    setSlip('slip-esi', slip.esi);
+    setSlip('slip-insurance', slip.insurance);
+    setSlip('slip-penalty', slip.penalty);
+    setSlip('slip-total-ded', slip.totalDed);
+    setSlip('slip-net', slip.net);
+
+    if (attEl) {
+      attEl.textContent = slip.note;
+      attEl.style.display = 'block';
+    }
 
     document.querySelectorAll('.month-chip').forEach(chip => {
       chip.classList.remove('selected');
     });
-    event.target.classList.add('selected');
+    if (chipEl) chipEl.classList.add('selected');
   } catch (err) {
     console.error('Error loading payslip:', err);
     document.getElementById('slip-name').textContent = 'Error loading payslip';
@@ -4250,9 +4489,12 @@ window.addEventListener('load', async () => {
   }
 
   loadCompanySettings().catch(e => console.error('Settings error:', e));
-  loadWorkSettings().catch(e => console.error('Work settings error:', e));
   loadLeaveTypes().catch(e => console.error('Leave types error:', e));
   loadLeaveBalance().catch(e => console.error('Leave balance error:', e));
+
+  setTimeout(() => {
+    initCalendarEventListeners();
+  }, 500);
   populateMonthPicker().catch(e => console.error('Month picker error:', e));
   setupDatePickerListeners();
 

@@ -1409,6 +1409,11 @@ body.light-mode {
           <input type="number" class="form-input" id="edit-emp-esi" placeholder="0" min="0">
         </div>
       </div>
+
+      <div class="form-group">
+        <label class="form-label">Insurance Deduction (₹)</label>
+        <input type="number" class="form-input" id="edit-emp-insurance" placeholder="0" min="0">
+      </div>
     </div>
 
     <div style="display:flex;gap:10px">
@@ -1787,12 +1792,8 @@ function switchSection(section, target) {
   if (section === 'leaves') loadLeaveRequests();
   if (section === 'regularization') loadRegularizationRequests();
   if (section === 'notifications') loadNotificationPage();
-
   if (section === 'dashboard') loadDashboard();
   if (section === 'settings') loadCompanySettings();
-  if (section === 'employees') loadEmployeesList();
-  if (section === 'leaves') loadLeaveRequests();
-  if (section === 'regularization') loadRegularizationRequests();
   if (section === 'leave-balance') loadLeaveBalanceList();
   if (section === 'attendance-logs') { loadAttendanceLogsList(); loadEmployeesForAttendance(); }
   if (section === 'payslip-generator') clearPayslipPreview();
@@ -1813,9 +1814,25 @@ function switchSettingsTab(tab) {
   if (tab === 'company') loadCompanyLogo();
 }
 
+// Local-timezone date string (YYYY-MM-DD) — toISOString() shifts dates in IST
+function toLocalDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Cached emp_id -> name map for display in lists
+let EMP_NAME_MAP = {};
+async function getEmpNameMap() {
+  try {
+    const { data } = await supabaseClient.from('employees').select('emp_id, name');
+    EMP_NAME_MAP = {};
+    (data || []).forEach(e => { EMP_NAME_MAP[e.emp_id] = e.name; });
+  } catch (e) { /* keep old map */ }
+  return EMP_NAME_MAP;
+}
+
 async function loadDashboard() {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateStr(new Date());
 
     // Fetch company settings for late cutoff time
     const { data: settings } = await supabaseClient
@@ -1895,18 +1912,20 @@ async function loadPendingLeaves() {
       return;
     }
 
+    const names = await getEmpNameMap();
+
     let html = '';
     data.forEach(req => {
       html += `
         <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)">Employee ${req.emp_id}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(names[req.emp_id] || req.emp_id)} <span style="color:var(--muted);font-weight:400">(${escapeHtml(req.emp_id)})</span></div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px">${req.days} days • ${req.from_date}</div>
             </div>
             <div style="display:flex;gap:6px">
-              <button class="btn-approve" onclick="approveLeave('${req.id}')">Approve</button>
-              <button class="btn-reject" onclick="rejectLeave('${req.id}')">Reject</button>
+              <button class="btn-approve" data-req-id="${escapeAttr(req.id)}" onclick="approveLeave(this.dataset.reqId)">Approve</button>
+              <button class="btn-reject" data-req-id="${escapeAttr(req.id)}" onclick="rejectLeave(this.dataset.reqId)">Reject</button>
             </div>
           </div>
         </div>
@@ -2153,6 +2172,8 @@ async function loadLeaveRequests() {
       return;
     }
 
+    const names = await getEmpNameMap();
+
     let html = '';
     data.forEach(req => {
       const statusClass = `status-${req.status.toLowerCase()}`;
@@ -2160,7 +2181,7 @@ async function loadLeaveRequests() {
         <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)">EMP ${escapeHtml(req.emp_id)}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(names[req.emp_id] || req.emp_id)} <span style="color:var(--muted);font-weight:400">(${escapeHtml(req.emp_id)})</span></div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px">${req.days} days • ${req.from_date} to ${req.to_date}</div>
               <div style="font-size:10px;color:var(--muted);margin-top:4px">${escapeHtml(req.reason || 'N/A')}</div>
             </div>
@@ -2186,40 +2207,108 @@ async function loadLeaveRequests() {
   }
 }
 
-async function approveLeave(id) {
-  try {
-    const { data: leave } = await supabaseClient
-      .from('leave_requests')
+// Writes 'Leave' rows into attendance_logs for each day of an approved leave,
+// so the employee's calendar and payslip see the leave. Removes stale Absent rows.
+async function markLeaveInAttendance(leave) {
+  const dates = [];
+  const from = new Date(leave.from_date + 'T00:00:00');
+  const to = new Date(leave.to_date + 'T00:00:00');
+  for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+    dates.push(toLocalDateStr(d));
+  }
+  if (dates.length === 0) return;
+
+  // Remove auto-marked Absent rows on those dates
+  await supabaseClient
+    .from('attendance_logs')
+    .delete()
+    .eq('emp_id', leave.emp_id)
+    .eq('status', 'Absent')
+    .in('date', dates);
+
+  // Insert Leave rows for dates that have no record yet
+  const { data: existing } = await supabaseClient
+    .from('attendance_logs')
+    .select('date')
+    .eq('emp_id', leave.emp_id)
+    .in('date', dates);
+
+  const existingSet = new Set((existing || []).map(r => r.date));
+  const rows = dates
+    .filter(dt => !existingSet.has(dt))
+    .map(dt => ({ emp_id: leave.emp_id, date: dt, status: 'Leave', remarks: 'Approved leave' }));
+
+  if (rows.length > 0) {
+    await supabaseClient.from('attendance_logs').insert(rows);
+  }
+}
+
+async function applyLeaveDecision(id, approve, comments) {
+  const { data: leave } = await supabaseClient
+    .from('leave_requests')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (!leave) throw new Error('Leave request not found');
+
+  const adminEmail = adminUser?.email || localStorage.getItem('admin_email') || 'admin';
+  const update = {
+    status: approve ? 'Approved' : 'Rejected',
+    approved_by: adminEmail
+  };
+  if (comments) update.comments = comments;
+
+  const { error } = await supabaseClient
+    .from('leave_requests')
+    .update(update)
+    .eq('id', id);
+  if (error) throw error;
+
+  if (approve && leave.status !== 'Approved') {
+    // Deduct from balance
+    const { data: balance } = await supabaseClient
+      .from('employee_leave_balance')
       .select('*')
-      .eq('id', id)
-      .single();
+      .eq('emp_id', leave.emp_id)
+      .eq('leave_type_id', leave.leave_type_id)
+      .limit(1);
 
-    if (leave) {
-      await supabaseClient
-        .from('leave_requests')
-        .update({ status: 'Approved', approved_by: adminUser.email })
-        .eq('id', id);
-
+    if (balance && balance[0]) {
       await supabaseClient
         .from('employee_leave_balance')
-        .select('*')
-        .eq('emp_id', leave.emp_id)
-        .eq('leave_type_id', leave.leave_type_id)
-        .then(async ({ data: balance }) => {
-          if (balance && balance[0]) {
-            await supabaseClient
-              .from('employee_leave_balance')
-              .update({ used: (balance[0].used || 0) + leave.days })
-              .eq('id', balance[0].id);
-          }
-        });
-
-      alert('✅ Leave approved!');
-      loadPendingLeaves();
-      loadLeaveRequests();
+        .update({ used: (balance[0].used || 0) + leave.days })
+        .eq('id', balance[0].id);
+    } else if (leave.leave_type_id) {
+      const { data: type } = await supabaseClient
+        .from('leave_types').select('days_per_year').eq('id', leave.leave_type_id).single();
+      await supabaseClient.from('employee_leave_balance').insert([{
+        emp_id: leave.emp_id,
+        leave_type_id: leave.leave_type_id,
+        balance: type?.days_per_year || 0,
+        used: leave.days
+      }]);
     }
+
+    await markLeaveInAttendance(leave);
+  }
+
+  // Notify the employee in-app
+  const title = approve ? '✅ Leave Approved' : '❌ Leave Rejected';
+  const message = approve
+    ? `Your ${leave.days}-day leave (${leave.from_date} to ${leave.to_date}) has been approved.`
+    : `Your leave request (${leave.from_date} to ${leave.to_date}) was rejected.${comments ? ' Reason: ' + comments : ''}`;
+  await sendAutomatedNotification(leave.emp_id, title, message, 'leave');
+}
+
+async function approveLeave(id) {
+  try {
+    await applyLeaveDecision(id, true);
+    alert('✅ Leave approved!');
+    loadPendingLeaves();
+    loadLeaveRequests();
   } catch (err) {
-    alert('Error approving leave');
+    alert('Error approving leave: ' + err.message);
     console.error(err);
   }
 }
@@ -2229,15 +2318,12 @@ async function rejectLeave(id) {
   if (!reason) return;
 
   try {
-    await supabaseClient
-      .from('leave_requests')
-      .update({ status: 'Rejected', approved_by: adminUser.email, comments: reason })
-      .eq('id', id);
+    await applyLeaveDecision(id, false, reason);
     alert('✅ Leave rejected');
     loadPendingLeaves();
     loadLeaveRequests();
   } catch (err) {
-    alert('Error rejecting leave');
+    alert('Error rejecting leave: ' + err.message);
     console.error(err);
   }
 }
@@ -2268,7 +2354,7 @@ async function editLeaveModal(leaveId) {
       document.getElementById('edit-leave-to').value = leave.to_date;
       document.getElementById('edit-leave-days').value = leave.days;
       document.getElementById('edit-leave-reason').value = leave.reason || '';
-      document.getElementById('edit-leave-remarks').value = leave.remarks || '';
+      document.getElementById('edit-leave-remarks').value = leave.comments || '';
       document.getElementById('edit-leave-status').value = leave.status;
       document.getElementById('edit-leave-modal').dataset.leaveId = leaveId;
       document.getElementById('edit-leave-modal').classList.add('open');
@@ -2284,15 +2370,7 @@ async function approveLeaveFromEdit() {
   const remarks = document.getElementById('edit-leave-remarks').value;
 
   try {
-    const { error } = await supabaseClient
-      .from('leave_requests')
-      .update({
-        status: 'Approved',
-        remarks: remarks
-      })
-      .eq('id', leaveId);
-
-    if (error) throw error;
+    await applyLeaveDecision(leaveId, true, remarks);
     alert('✅ Leave approved successfully!');
     closeModal('edit-leave-modal');
     loadLeaveRequests();
@@ -2308,15 +2386,7 @@ async function rejectLeaveFromEdit() {
   const remarks = document.getElementById('edit-leave-remarks').value;
 
   try {
-    const { error } = await supabaseClient
-      .from('leave_requests')
-      .update({
-        status: 'Rejected',
-        remarks: remarks
-      })
-      .eq('id', leaveId);
-
-    if (error) throw error;
+    await applyLeaveDecision(leaveId, false, remarks);
     alert('✅ Leave rejected!');
     closeModal('edit-leave-modal');
     loadLeaveRequests();
@@ -2341,6 +2411,11 @@ async function saveLeaveEdit() {
     return;
   }
 
+  if (new Date(toDate) < new Date(fromDate)) {
+    alert('End date cannot be before start date');
+    return;
+  }
+
   try {
     const { error } = await supabaseClient
       .from('leave_requests')
@@ -2349,7 +2424,7 @@ async function saveLeaveEdit() {
         to_date: toDate,
         days: days,
         reason: reason,
-        remarks: remarks,
+        comments: remarks,
         status: status
       })
       .eq('id', leaveId);
@@ -2382,15 +2457,17 @@ async function loadLeaveTypesList() {
       html += `
         <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
           <div style="display:flex;align-items:center;gap:12px;flex:1">
-            <div style="width:16px;height:16px;background:${type.color};border-radius:4px"></div>
+            <div style="width:16px;height:16px;background:${escapeAttr(type.color)};border-radius:4px"></div>
             <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)">${type.name}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(type.name)}</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px">${type.days_per_year} days/year</div>
             </div>
           </div>
           <div style="display:flex;gap:6px">
-            <button class="btn-approve" style="font-size:11px;padding:6px 10px" onclick="openEditLeaveTypeModal('${type.id}', '${type.name}', ${type.days_per_year}, '${type.color}')">✏️ Edit</button>
-            <button class="btn-reject" style="font-size:11px;padding:6px 10px" onclick="deleteLeaveType('${type.id}')">🗑️ Delete</button>
+            <button class="btn-approve" style="font-size:11px;padding:6px 10px"
+              data-id="${escapeAttr(type.id)}" data-name="${escapeAttr(type.name)}" data-days="${type.days_per_year}" data-color="${escapeAttr(type.color)}"
+              onclick="openEditLeaveTypeModal(this.dataset.id, this.dataset.name, this.dataset.days, this.dataset.color)">✏️ Edit</button>
+            <button class="btn-reject" style="font-size:11px;padding:6px 10px" data-id="${escapeAttr(type.id)}" onclick="deleteLeaveType(this.dataset.id)">🗑️ Delete</button>
           </div>
         </div>
       `;
@@ -2417,17 +2494,20 @@ async function loadHolidaysList() {
 
     let html = '';
     data.forEach(holiday => {
-      const date = new Date(holiday.date).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
+      const date = new Date(holiday.date).toLocaleDateString('en-IN', {month: 'short', day: 'numeric', year: 'numeric'});
       html += `
         <div style="background:var(--navy);border:1px solid rgba(0,102,255,0.1);border-radius:8px;padding:12px;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)">${holiday.holiday_name}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(holiday.holiday_name)}</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px">${date}</div>
             </div>
             <div style="display:flex;gap:6px">
-              <button class="btn-approve" style="font-size:11px;padding:6px 10px" onclick="openEditHolidayModal('${holiday.id}', '${holiday.holiday_name}', '${holiday.date}', '${holiday.description || ''}', ${holiday.is_restricted || false})">✏️ Edit</button>
-              <button class="btn-reject" style="font-size:11px;padding:6px 10px" onclick="deleteHoliday('${holiday.id}')">🗑️ Delete</button>
+              <button class="btn-approve" style="font-size:11px;padding:6px 10px"
+                data-id="${escapeAttr(holiday.id)}" data-name="${escapeAttr(holiday.holiday_name)}" data-date="${escapeAttr(holiday.date)}"
+                data-desc="${escapeAttr(holiday.description || '')}" data-restricted="${holiday.is_restricted ? '1' : ''}"
+                onclick="openEditHolidayModal(this.dataset.id, this.dataset.name, this.dataset.date, this.dataset.desc, !!this.dataset.restricted)">✏️ Edit</button>
+              <button class="btn-reject" style="font-size:11px;padding:6px 10px" data-id="${escapeAttr(holiday.id)}" onclick="deleteHoliday(this.dataset.id)">🗑️ Delete</button>
             </div>
           </div>
         </div>
@@ -2442,27 +2522,40 @@ async function loadHolidaysList() {
 
 async function addEmployee() {
   const empData = {
-    emp_id: document.getElementById('emp-id').value,
-    name: document.getElementById('emp-name').value,
-    phone: document.getElementById('emp-phone').value,
-    email: document.getElementById('emp-email').value,
-    designation: document.getElementById('emp-designation').value
+    emp_id: document.getElementById('emp-id').value.trim(),
+    name: document.getElementById('emp-name').value.trim(),
+    phone: document.getElementById('emp-phone').value.trim(),
+    email: document.getElementById('emp-email').value.trim(),
+    designation: document.getElementById('emp-designation').value.trim()
   };
 
   if (!empData.emp_id || !empData.name) {
     alert('Fill required fields');
     return;
   }
+  if (empData.phone && !validatePhone(empData.phone)) {
+    alert('Invalid phone number (10-12 digits)');
+    return;
+  }
+  if (empData.email && !validateEmail(empData.email)) {
+    alert('Invalid email address');
+    return;
+  }
 
   try {
-    await supabaseClient
+    const { error } = await supabaseClient
       .from('employees')
       .insert(empData);
+
+    if (error) {
+      if (error.code === '23505') throw new Error('Employee ID already exists');
+      throw error;
+    }
     alert('✅ Employee added');
     closeModal('add-employee-modal');
     loadEmployeesList();
   } catch (err) {
-    alert('Error adding employee');
+    alert('Error adding employee: ' + err.message);
     console.error(err);
   }
 }
@@ -2492,6 +2585,7 @@ async function openEditEmployeeModal(empId) {
       document.getElementById('edit-emp-allowances').value = emp.other_allowances || '';
       document.getElementById('edit-emp-pf').value = emp.pf_deduction || '';
       document.getElementById('edit-emp-esi').value = emp.esi_deduction || '';
+      document.getElementById('edit-emp-insurance').value = emp.insurance_deduction || '';
 
       document.getElementById('edit-employee-modal').classList.add('open');
     }
@@ -2507,9 +2601,11 @@ async function updateEmployee() {
   const hra = parseFloat(document.getElementById('edit-emp-hra').value) || 0;
   const da = parseFloat(document.getElementById('edit-emp-da').value) || 0;
   const pf = parseFloat(document.getElementById('edit-emp-pf').value) || 0;
+  const esi = parseFloat(document.getElementById('edit-emp-esi').value) || 0;
+  const insurance = parseFloat(document.getElementById('edit-emp-insurance').value) || 0;
 
   // Validate salary fields
-  if (basic < 0 || hra < 0 || da < 0 || pf < 0) {
+  if (basic < 0 || hra < 0 || da < 0 || pf < 0 || esi < 0 || insurance < 0) {
     alert('Salary values cannot be negative');
     return;
   }
@@ -2533,7 +2629,8 @@ async function updateEmployee() {
     da: da,
     other_allowances: parseFloat(document.getElementById('edit-emp-allowances').value) || 0,
     pf_deduction: pf,
-    esi_deduction: parseFloat(document.getElementById('edit-emp-esi').value) || 0
+    esi_deduction: esi,
+    insurance_deduction: insurance
   };
 
   if (!empData.name) {
@@ -2581,12 +2678,13 @@ async function deleteEmployee(empId) {
 }
 
 async function addHoliday() {
+  const holidayDate = document.getElementById('holiday-date').value;
   const holiday = {
     holiday_name: document.getElementById('holiday-name').value,
-    date: document.getElementById('holiday-date').value,
+    date: holidayDate,
     description: document.getElementById('holiday-desc').value,
     is_restricted: document.getElementById('holiday-restricted').checked,
-    year: new Date().getFullYear()
+    year: holidayDate ? parseInt(holidayDate.split('-')[0]) : new Date().getFullYear()
   };
 
   if (!holiday.holiday_name || !holiday.date) {
@@ -2827,7 +2925,37 @@ async function uploadCompanyLogo() {
   }
 }
 
-async function generateSalarySlip(empId, month, year) {
+// Returns the saved payslip for emp+month if the admin generated one,
+// otherwise computes it live with the standard formula.
+async function getOrComputePayslip(emp, monthStr, settings) {
+  const { data: saved } = await supabaseClient
+    .from('payslips')
+    .select('*')
+    .eq('emp_id', emp.emp_id)
+    .eq('month', monthStr)
+    .limit(1);
+
+  if (saved && saved.length > 0) {
+    const p = saved[0];
+    return {
+      basic: p.basic_salary || 0, hra: p.hra || 0, da: p.da || 0,
+      allowances: p.other_allowances || 0, grossSalary: p.gross_salary || 0,
+      pf: p.pf_deduction || 0, esi: p.esi_deduction || 0, insurance: p.insurance_deduction || 0,
+      latePenalty: p.late_penalty || 0, absentPenalty: p.absent_penalty || 0,
+      shortDayPenalty: p.short_day_penalty || 0,
+      totalDeductions: p.total_deductions || 0, netSalary: p.net_salary || 0,
+      presentDays: p.present_days, lateDays: p.late_days, absentDays: p.absent_days,
+      leaveDays: p.leave_days, official: true
+    };
+  }
+
+  const [year, month] = monthStr.split('-');
+  const computed = await calculatePayslip(emp, year, month, settings);
+  computed.official = false;
+  return computed;
+}
+
+async function generateSalarySlip(empId, monthStr) {
   try {
     const { data: emp } = await supabaseClient
       .from('employees')
@@ -2846,11 +2974,20 @@ async function generateSalarySlip(empId, month, year) {
       return;
     }
 
-    const basic = emp.basic_salary || 0;
-    const hra = emp.hra || 0;
-    const pf = emp.pf_deduction || 0;
-    const gross = basic + hra;
-    const net = gross - pf;
+    const [year, monthNum] = monthStr.split('-');
+    const month = new Date(year, parseInt(monthNum) - 1).toLocaleString('default', { month: 'long' });
+    const p = await getOrComputePayslip(emp, monthStr, settings);
+    const basic = Math.round(p.basic);
+    const hra = Math.round(p.hra);
+    const da = Math.round(p.da);
+    const allowances = Math.round(p.allowances);
+    const gross = Math.round(p.grossSalary);
+    const pf = Math.round(p.pf);
+    const esi = Math.round(p.esi);
+    const insurance = Math.round(p.insurance);
+    const penalty = Math.round((p.latePenalty || 0) + (p.absentPenalty || 0) + (p.shortDayPenalty || 0));
+    const totalDed = Math.round(p.totalDeductions);
+    const net = Math.round(p.netSalary);
 
     const html = `
       <div style="font-family:Arial;max-width:800px;margin:0 auto;padding:20px;background:white;color:black">
@@ -2875,7 +3012,9 @@ async function generateSalarySlip(empId, month, year) {
           </tr>
         </table>
 
-        <table style="width:100%;margin-top:30px;border-collapse:collapse;border:1px solid #000">
+        ${p.presentDays != null ? `<p style="margin-top:14px;font-size:13px"><strong>Attendance:</strong> Present ${p.presentDays} | Late ${p.lateDays || 0} | Absent ${p.absentDays || 0} | Leave ${p.leaveDays || 0}${p.official ? '' : ' (live estimate — payslip not generated yet)'}</p>` : ''}
+
+        <table style="width:100%;margin-top:20px;border-collapse:collapse;border:1px solid #000">
           <thead>
             <tr style="background:#f0f0f0">
               <th style="padding:10px;text-align:left;border:1px solid #000">EARNINGS</th>
@@ -2890,6 +3029,14 @@ async function generateSalarySlip(empId, month, year) {
             <tr>
               <td style="padding:10px;border:1px solid #000">HRA</td>
               <td style="padding:10px;text-align:right;border:1px solid #000">₹${hra}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px;border:1px solid #000">DA</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${da}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px;border:1px solid #000">Other Allowances</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${allowances}</td>
             </tr>
             <tr style="background:#e8f4f8;font-weight:bold">
               <td style="padding:10px;border:1px solid #000">Gross Salary</td>
@@ -2909,6 +3056,22 @@ async function generateSalarySlip(empId, month, year) {
             <tr>
               <td style="padding:10px;border:1px solid #000">PF Deduction</td>
               <td style="padding:10px;text-align:right;border:1px solid #000">₹${pf}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px;border:1px solid #000">ESI</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${esi}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px;border:1px solid #000">Insurance</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${insurance}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px;border:1px solid #000">Attendance Penalty</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${penalty}</td>
+            </tr>
+            <tr style="font-weight:bold">
+              <td style="padding:10px;border:1px solid #000">Total Deductions</td>
+              <td style="padding:10px;text-align:right;border:1px solid #000">₹${totalDed}</td>
             </tr>
             <tr style="background:#ffe8e8;font-weight:bold">
               <td style="padding:10px;border:1px solid #000">Net Salary</td>
@@ -2933,7 +3096,7 @@ async function generateSalarySlip(empId, month, year) {
   }
 }
 
-async function downloadSalarySlip(empId, month, year) {
+async function downloadSalarySlip(empId, monthStr) {
   try {
     const { data: emp } = await supabaseClient
       .from('employees')
@@ -2946,27 +3109,33 @@ async function downloadSalarySlip(empId, month, year) {
       return;
     }
 
-    const basic = emp.basic_salary || 0;
-    const hra = emp.hra || 0;
-    const pf = emp.pf_deduction || 0;
-    const gross = basic + hra;
-    const net = gross - pf;
+    const { data: settings } = await supabaseClient
+      .from('company_settings').select('*').limit(1).single();
+
+    const p = await getOrComputePayslip(emp, monthStr, settings);
 
     const csvContent = `
-SALARY SLIP - ${month}/${year}
+SALARY SLIP - ${monthStr}${p.official ? '' : ' (ESTIMATE - not yet generated)'}
 Employee ID: ${emp.emp_id}
 Name: ${emp.name}
 Designation: ${emp.designation || '—'}
+Attendance: Present ${p.presentDays ?? '—'} | Late ${p.lateDays ?? '—'} | Absent ${p.absentDays ?? '—'} | Leave ${p.leaveDays ?? '—'}
 
 EARNINGS
-Basic Salary: ${basic}
-HRA: ${hra}
-Gross Salary: ${gross}
+Basic Salary: ${Math.round(p.basic)}
+HRA: ${Math.round(p.hra)}
+DA: ${Math.round(p.da)}
+Other Allowances: ${Math.round(p.allowances)}
+Gross Salary: ${Math.round(p.grossSalary)}
 
 DEDUCTIONS
-PF Deduction: ${pf}
+PF Deduction: ${Math.round(p.pf)}
+ESI: ${Math.round(p.esi)}
+Insurance: ${Math.round(p.insurance)}
+Attendance Penalty: ${Math.round((p.latePenalty || 0) + (p.absentPenalty || 0) + (p.shortDayPenalty || 0))}
+Total Deductions: ${Math.round(p.totalDeductions)}
 
-NET SALARY: ${net}
+NET SALARY: ${Math.round(p.netSalary)}
 
 Generated: ${new Date().toLocaleDateString()}
     `;
@@ -2975,7 +3144,7 @@ Generated: ${new Date().toLocaleDateString()}
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `salary_slip_${empId}_${month}_${year}.txt`;
+    a.download = `salary_slip_${empId}_${monthStr}.txt`;
     a.click();
     window.URL.revokeObjectURL(url);
   } catch (err) {
@@ -2987,7 +3156,7 @@ async function loadRegularizationRequests() {
   try {
     const { data } = await supabaseClient
       .from('attendance_regularization')
-      .select('*, emp_id(*)')
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (!data || data.length === 0) {
@@ -2996,9 +3165,11 @@ async function loadRegularizationRequests() {
       return;
     }
 
+    const names = await getEmpNameMap();
+
     let html = '';
     for (const req of data) {
-      const empName = req.emp_id?.name || '—';
+      const empName = names[req.emp_id] || '—';
       const status = req.status === 'pending' ? '🟡 Pending' : req.status === 'approved' ? '✅ Approved' : '❌ Rejected';
       const actionBtn = req.status === 'pending' ? `
         <button class="btn-small" data-req-id="${escapeAttr(req.id)}" onclick="approveRegularization(this.dataset.reqId)">✅ Approve</button>
@@ -3010,7 +3181,7 @@ async function loadRegularizationRequests() {
           <td>${escapeHtml(req.emp_id)}</td>
           <td>${escapeHtml(empName)}</td>
           <td>${req.date}</td>
-          <td style="font-size:12px">${req.reason || '—'}</td>
+          <td style="font-size:12px">${escapeHtml(req.reason || '—')}</td>
           <td>${status}</td>
           <td>${actionBtn}</td>
         </tr>
@@ -3026,13 +3197,41 @@ async function loadRegularizationRequests() {
 
 async function approveRegularization(reqId) {
   try {
+    const { data: req, error: fetchErr } = await supabaseClient
+      .from('attendance_regularization')
+      .select('*')
+      .eq('id', reqId)
+      .single();
+    if (fetchErr || !req) throw (fetchErr || new Error('Request not found'));
+
     const { error } = await supabaseClient
       .from('attendance_regularization')
       .update({ status: 'approved' })
       .eq('id', reqId);
-
     if (error) throw error;
-    alert('✅ Request approved!');
+
+    // Fix the attendance record for that day: mark Present, clear penalty
+    const { data: logs } = await supabaseClient
+      .from('attendance_logs')
+      .select('id')
+      .eq('emp_id', req.emp_id)
+      .eq('date', req.date);
+
+    if (logs && logs.length > 0) {
+      await supabaseClient
+        .from('attendance_logs')
+        .update({ status: 'Present', penalty: 0, remarks: 'Regularized by admin' })
+        .in('id', logs.map(l => l.id));
+    } else {
+      await supabaseClient
+        .from('attendance_logs')
+        .insert([{ emp_id: req.emp_id, date: req.date, status: 'Present', remarks: 'Regularized by admin' }]);
+    }
+
+    await sendAutomatedNotification(req.emp_id, '✅ Regularization Approved',
+      `Your attendance for ${req.date} has been regularized and marked Present.`, 'attendance');
+
+    alert('✅ Request approved & attendance marked Present!');
     loadRegularizationRequests();
   } catch (err) {
     alert('Error: ' + err.message);
@@ -3042,12 +3241,24 @@ async function approveRegularization(reqId) {
 async function rejectRegularization(reqId) {
   const reason = prompt('Enter rejection reason (optional):');
   try {
+    const { data: req } = await supabaseClient
+      .from('attendance_regularization')
+      .select('emp_id, date')
+      .eq('id', reqId)
+      .single();
+
     const { error } = await supabaseClient
       .from('attendance_regularization')
       .update({ status: 'rejected', rejection_reason: reason })
       .eq('id', reqId);
 
     if (error) throw error;
+
+    if (req) {
+      await sendAutomatedNotification(req.emp_id, '❌ Regularization Rejected',
+        `Your regularization request for ${req.date} was rejected.${reason ? ' Reason: ' + reason : ''}`, 'attendance');
+    }
+
     alert('❌ Request rejected!');
     loadRegularizationRequests();
   } catch (err) {
@@ -3104,13 +3315,10 @@ async function handleSalarySlip(action) {
     return;
   }
 
-  const [year, month] = monthStr.split('-');
-  const monthName = new Date(year, parseInt(month) - 1).toLocaleString('default', { month: 'long' });
-
   if (action === 'print') {
-    generateSalarySlip(empId, monthName, year);
+    generateSalarySlip(empId, monthStr);
   } else if (action === 'download') {
-    downloadSalarySlip(empId, monthName, year);
+    downloadSalarySlip(empId, monthStr);
   }
 }
 
@@ -3386,7 +3594,7 @@ async function loadAttendanceLogsList() {
               <div style="color:var(--muted);font-size:10px;margin-top:2px">${log.clock_in_time || '—'} to ${log.clock_out_time || '—'}</div>
             </div>
             <div style="display:flex;gap:6px;align-items:center">
-              <span class="status-badge status-${log.status.toLowerCase()}" style="font-size:10px">${log.status}</span>
+              <span class="status-badge status-${log.status.toLowerCase().replace(/\s+/g, '-')}" style="font-size:10px">${log.status}</span>
               <span style="color:var(--muted);font-size:10px">${log.hours_worked || '—'}</span>
               <div style="display:flex;gap:4px">
                 <button class="btn-approve" style="font-size:10px;padding:4px 6px" onclick="openEditAttendanceModal('${log.id}', '${log.emp_id}', '${log.date}', '${log.clock_in_time || ''}', '${log.clock_out_time || ''}', '${log.status}')">✏️</button>
@@ -3557,13 +3765,14 @@ async function generatePayslipPreview() {
           <div style="font-weight:600;color:var(--text);margin-bottom:12px">${escapeHtml(emp.name)} (${escapeHtml(emp.emp_id)})</div>
 
           <div style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:8px;background:rgba(0,102,255,0.05);border-radius:4px">
-            Present: ${payslip.presentDays} | Late: ${payslip.lateDays} | Absent: ${payslip.absentDays} | Leave: ${payslip.leaveDays}
+            Present: ${payslip.presentDays} | Late: ${payslip.lateDays} | Short: ${payslip.shortDays} | Absent: ${payslip.absentDays} | Leave: ${payslip.leaveDays}
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:11px;margin-bottom:12px;padding:8px;background:rgba(0,102,255,0.05);border-radius:4px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;font-size:11px;margin-bottom:12px;padding:8px;background:rgba(0,102,255,0.05);border-radius:4px">
             <div><div style="color:var(--muted)">Basic</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.basic)}</div></div>
             <div><div style="color:var(--muted)">HRA</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.hra)}</div></div>
             <div><div style="color:var(--muted)">DA</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.da)}</div></div>
+            <div><div style="color:var(--muted)">Allowances</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.allowances)}</div></div>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
@@ -3572,13 +3781,14 @@ async function generatePayslipPreview() {
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;margin-top:8px">
-            <div><div style="color:var(--muted);margin-bottom:4px">Professional Tax</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.professionalTax)}</div></div>
-            <div><div style="color:var(--muted);margin-bottom:4px">TDS</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.tds)}</div></div>
+            <div><div style="color:var(--muted);margin-bottom:4px">ESI</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.esi)}</div></div>
+            <div><div style="color:var(--muted);margin-bottom:4px">Insurance</div><div style="font-weight:600;color:var(--text)">₹${Math.round(payslip.insurance)}</div></div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;margin-top:8px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:12px;margin-top:8px">
             <div><div style="color:var(--muted);margin-bottom:4px">Late Penalty</div><div style="font-weight:600;color:var(--red)">-₹${Math.round(payslip.latePenalty)}</div></div>
             <div><div style="color:var(--muted);margin-bottom:4px">Absent Penalty</div><div style="font-weight:600;color:var(--red)">-₹${Math.round(payslip.absentPenalty)}</div></div>
+            <div><div style="color:var(--muted);margin-bottom:4px">Short Day Penalty</div><div style="font-weight:600;color:var(--red)">-₹${Math.round(payslip.shortDayPenalty)}</div></div>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,102,255,0.1);font-size:13px">
@@ -3617,13 +3827,14 @@ async function calculatePayslip(emp, year, month, settings) {
     .gte('date', monthStr + '-01')
     .lte('date', lastDateStr);
 
+  // Any approved leave that OVERLAPS this month (not only fully inside it)
   const { data: leaves } = await supabaseClient
     .from('leave_requests')
     .select('*')
     .eq('emp_id', emp.emp_id)
     .eq('status', 'Approved')
-    .gte('from_date', monthStr + '-01')
-    .lte('to_date', lastDateStr);
+    .lte('from_date', lastDateStr)
+    .gte('to_date', monthStr + '-01');
 
   const penaltyPct = settings?.penalty_per_late_pct || 2;
   const absentPct = settings?.absent_penalty_pct || 5;
@@ -3641,8 +3852,17 @@ async function calculatePayslip(emp, year, month, settings) {
   }
 
   if (leaves) {
+    // Count only the leave days that fall inside this month
+    const monthFirst = new Date(monthStr + '-01T00:00:00');
+    const monthLast = new Date(lastDateStr + 'T00:00:00');
     leaves.forEach(leave => {
-      leaveDays += leave.days || 0;
+      const from = new Date(leave.from_date + 'T00:00:00');
+      const to = new Date(leave.to_date + 'T00:00:00');
+      const start = from > monthFirst ? from : monthFirst;
+      const end = to < monthLast ? to : monthLast;
+      if (end >= start) {
+        leaveDays += Math.round((end - start) / 86400000) + 1;
+      }
     });
   }
 
@@ -3655,25 +3875,22 @@ async function calculatePayslip(emp, year, month, settings) {
   const grossSalary = basic + hra + da + allowances;
   const salaryPerDay = grossSalary / 30;
 
-  // Deductions
-  const pf = Math.min(emp.pf_deduction || (basic * 0.12), 50000 / 12); // 12% PF, max ₹50k/month
+  // Deductions — admin-set amount wins; fallback 12% of basic, capped ₹50k/month
+  const pf = Math.min(emp.pf_deduction || (basic * 0.12), 50000);
   const esi = emp.esi_deduction || 0; // ESI if applicable
-  const professionalTax = calculateProfessionalTax(grossSalary, settings); // State-specific
+  const insurance = emp.insurance_deduction || 0; // Group Insurance
 
   // Attendance-based deductions
   const latePenalty = (salaryPerDay * lateDays * (penaltyPct / 100));
   const absentPenalty = (salaryPerDay * absentDays * (absentPct / 100));
   const shortDayPenalty = (salaryPerDay * shortDays * (shortdayPct / 100));
 
-  // TDS Calculation (Simplified - based on annual calculation)
-  const tds = calculateTDS(grossSalary - (pf + esi + professionalTax));
-
-  const totalDeductions = pf + esi + professionalTax + latePenalty + absentPenalty + shortDayPenalty + tds;
+  const totalDeductions = pf + esi + insurance + latePenalty + absentPenalty + shortDayPenalty;
   const netSalary = grossSalary - totalDeductions;
 
   return {
     basic, hra, da, allowances, grossSalary,
-    pf, esi, professionalTax, tds,
+    pf, esi, insurance,
     presentDays, lateDays, absentDays, shortDays, leaveDays,
     latePenalty, absentPenalty, shortDayPenalty,
     totalDeductions, netSalary,
@@ -3681,39 +3898,15 @@ async function calculatePayslip(emp, year, month, settings) {
   };
 }
 
-function calculateProfessionalTax(grossSalary, settings) {
-  // Indian Professional Tax varies by state
-  // Maharashtra: 0-5000, 5000-10000, above 10000
-  if (grossSalary < 5000) return 0;
-  else if (grossSalary < 10000) return 150;
-  else return 200; // Typical range, adjust based on employee state
-}
-
-function calculateTDS(taxableIncome) {
-  // FY 2026-27 Indian Tax Slabs (Resident Individual)
-  // This is simplified monthly calculation
-  let monthlyTax = 0;
-  const annualIncome = taxableIncome * 12;
-
-  if (annualIncome <= 300000) monthlyTax = 0;
-  else if (annualIncome <= 700000) monthlyTax = ((annualIncome - 300000) * 0.05) / 12;
-  else if (annualIncome <= 1000000) monthlyTax = ((400000 * 0.05) + ((annualIncome - 700000) * 0.20)) / 12;
-  else if (annualIncome <= 1200000) monthlyTax = ((400000 * 0.05) + (300000 * 0.20) + ((annualIncome - 1000000) * 0.30)) / 12;
-  else monthlyTax = ((400000 * 0.05) + (300000 * 0.20) + (200000 * 0.30) + ((annualIncome - 1200000) * 0.45)) / 12;
-
-  // Add Health and Education cess (4% on TDS)
-  return Math.round(monthlyTax + (monthlyTax * 0.04));
-}
 
 function updatePayslipData(empId, field, value) {
   const payslip = window.payslipData.find(p => p.emp_id === empId);
   if (payslip) {
-    payslip[field] = parseFloat(value);
-    // Recalculate net
-    const gross = (payslip.basic || 0) + (payslip.hra || 0);
-    const totalDed = (payslip.pf || 0) + (payslip.latePenalty || 0) + (payslip.absentPenalty || 0) + (parseFloat(payslip.adjustment) || 0);
-    payslip.gross = gross;
-    payslip.net = gross - totalDed;
+    payslip[field] = parseFloat(value) || 0;
+    // Recalculate totals with the same components used everywhere else
+    payslip.totalDeductions = (payslip.pf || 0) + (payslip.esi || 0) + (payslip.insurance || 0) +
+      (payslip.latePenalty || 0) + (payslip.absentPenalty || 0) + (payslip.shortDayPenalty || 0);
+    payslip.netSalary = (payslip.grossSalary || 0) - payslip.totalDeductions;
   }
 }
 
@@ -3724,24 +3917,34 @@ async function saveAllPayslips() {
   }
 
   try {
-    for (const payslip of window.payslipData) {
-      await supabaseClient.from('payslips').insert([{
-        emp_id: payslip.emp_id,
-        month: payslip.month,
-        basic_salary: payslip.basic,
-        hra: payslip.hra,
-        gross_salary: payslip.gross,
-        pf_deduction: payslip.pf,
-        net_salary: payslip.net,
-        late_penalty: payslip.latePenalty,
-        absent_penalty: payslip.absentPenalty,
-        short_day_penalty: payslip.shortDayPenalty,
-        adjustment: payslip.adjustment || 0,
-        present_days: payslip.presentDays,
-        late_days: payslip.lateDays,
-        absent_days: payslip.absentDays
-      }]);
-    }
+    const rows = window.payslipData.map(payslip => ({
+      emp_id: payslip.emp_id,
+      month: payslip.month,
+      basic_salary: payslip.basic,
+      hra: payslip.hra,
+      da: payslip.da,
+      other_allowances: payslip.allowances,
+      gross_salary: payslip.grossSalary,
+      pf_deduction: payslip.pf,
+      esi_deduction: payslip.esi,
+      insurance_deduction: payslip.insurance,
+      net_salary: payslip.netSalary,
+      late_penalty: payslip.latePenalty,
+      absent_penalty: payslip.absentPenalty,
+      short_day_penalty: payslip.shortDayPenalty,
+      total_deductions: payslip.totalDeductions,
+      present_days: payslip.presentDays,
+      late_days: payslip.lateDays,
+      absent_days: payslip.absentDays,
+      leave_days: payslip.leaveDays
+    }));
+
+    // Re-generating the same month overwrites the old slip instead of duplicating
+    const { error } = await supabaseClient
+      .from('payslips')
+      .upsert(rows, { onConflict: 'emp_id,month' });
+
+    if (error) throw error;
     alert('✅ All payslips saved successfully!');
     clearPayslipPreview();
   } catch (err) {
