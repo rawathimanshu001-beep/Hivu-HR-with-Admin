@@ -2178,6 +2178,36 @@ async function handleMissingClockOut() {
   }
 }
 
+async function loadPayslip() {
+  try {
+    const empId = localStorage.getItem('auth_emp_id');
+    const { data: emp } = await supabaseClient
+      .from('employees')
+      .select('*')
+      .eq('emp_id', empId)
+      .single();
+
+    if (emp) {
+      const basic = emp.basic_salary || 0;
+      const hra = emp.hra || 0;
+      const pf = emp.pf_deduction || 0;
+      const gross = basic + hra;
+      const net = gross - pf;
+
+      document.getElementById('slip-name').textContent = emp.name;
+      document.getElementById('slip-sub').textContent = `${emp.emp_id} • ${emp.designation || '—'}`;
+      document.getElementById('slip-basic').textContent = `₹${basic.toLocaleString()}`;
+      document.getElementById('slip-hra').textContent = `₹${hra.toLocaleString()}`;
+      document.getElementById('slip-gross').textContent = `₹${gross.toLocaleString()}`;
+      document.getElementById('slip-pf').textContent = `₹${pf.toLocaleString()}`;
+      document.getElementById('slip-total-ded').textContent = `₹${pf.toLocaleString()}`;
+      document.getElementById('slip-net').textContent = `₹${net.toLocaleString()}`;
+    }
+  } catch (err) {
+    console.error('Error loading payslip:', err);
+  }
+}
+
 async function updateUIWithUserData(user) {
   const hour = new Date().getHours();
   let greeting = 'Good morning';
@@ -2207,9 +2237,8 @@ async function updateUIWithUserData(user) {
     document.getElementById('profile-anni').textContent = new Date(user.work_anniversary).toLocaleDateString('en-IN', {year:'numeric', month:'short', day:'numeric'});
   }
 
-  document.getElementById('slip-name').textContent = user.name || '—';
-  document.getElementById('slip-sub').textContent =
-    `${user.emp_id} · ${user.designation || '—'}`;
+  // Load payslip data
+  await loadPayslip();
 
   // Load work settings when profile loads
   if (STATE.currentPage === 'profile') {
@@ -2260,25 +2289,39 @@ async function loadCelebrations() {
         }
       });
 
-      const celebrations = Object.values(celebByName).filter(c => c.types.length > 0);
-      celebrations.sort((a, b) => Math.min(...a.dates).localeCompare(Math.min(...b.dates)));
+      const celebrations = [];
+      Object.values(celebByName).forEach(cel => {
+        cel.types.forEach((type, idx) => {
+          const dateStr = cel.dates[idx];
+          const [month, day] = dateStr.split('-');
+          const eventDate = new Date(today.getFullYear(), parseInt(month) - 1, parseInt(day));
+          const eventTypeText = type === 'birthday' ? 'Birthday' : 'Work Anniv.';
+
+          celebrations.push({
+            name: cel.name,
+            type: eventTypeText,
+            date: dateStr,
+            eventDate: eventDate,
+            avatar: cel.avatar,
+            initials: cel.initials
+          });
+        });
+      });
+
+      celebrations.sort((a, b) => a.eventDate - b.eventDate);
 
       if (celebrations.length > 0) {
         const html = celebrations.map(cel => {
-          let typeText = '';
-          if (cel.types.includes('birthday') && cel.types.includes('work_anniversary')) {
-            typeText = 'Birthday • Work Anniv.';
-          } else if (cel.types.includes('birthday')) {
-            typeText = 'Birthday';
-          } else {
-            typeText = 'Work Anniv.';
-          }
+          const [month, day] = cel.date.split('-');
+          const eventDate = new Date(today.getFullYear(), parseInt(month) - 1, parseInt(day));
+          const dateStr = eventDate.toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
 
           return `
             <div class="celebrate-item">
               <div class="celebrate-avatar">${cel.initials}</div>
               <div class="celebrate-name">${cel.name}</div>
-              <div class="celebrate-sub">${typeText}</div>
+              <div class="celebrate-sub">${cel.type}</div>
+              <div style="font-size:11px;color:var(--primary-light);margin-top:4px">${dateStr}</div>
             </div>
           `;
         }).join('');
@@ -2294,29 +2337,58 @@ async function loadCelebrations() {
 async function loadAttendanceData() {
   const empId = localStorage.getItem('auth_emp_id');
   const currentMonth = new Date().toISOString().split('T')[0].slice(0, 7);
+  const [year, month] = currentMonth.split('-');
+  const monthStart = new Date(year, parseInt(month) - 1, 1);
+  const monthEnd = new Date(year, parseInt(month), 0);
+  const daysInMonth = monthEnd.getDate();
 
   try {
-    const { data } = await supabaseClient
+    const { data: attendanceData } = await supabaseClient
       .from('attendance_logs')
       .select('*')
       .eq('emp_id', empId)
-      .gte('date', currentMonth + '-01');
+      .gte('date', currentMonth + '-01')
+      .lte('date', currentMonth + '-' + daysInMonth);
 
-    if (data) {
+    const { data: holidayData } = await supabaseClient
+      .from('company_holidays')
+      .select('date');
+
+    const { data: settingsData } = await supabaseClient
+      .from('company_settings')
+      .select('saturday_off, sunday_off')
+      .limit(1)
+      .single();
+
+    if (attendanceData) {
       const dateMap = {};
-      data.forEach(record => {
+      const holidays = new Set(holidayData?.map(h => h.date) || []);
+      const satOff = settingsData?.saturday_off !== false;
+      const sunOff = settingsData?.sunday_off !== false;
+
+      attendanceData.forEach(record => {
         if (record.date && !dateMap[record.date]) {
           dateMap[record.date] = record.status || 'Present';
         }
       });
 
       const stats = {present: 0, absent: 0, late: 0, leave: 0};
-      Object.values(dateMap).forEach(status => {
+
+      for (let i = 1; i <= daysInMonth; i++) {
+        const dateStr = `${year}-${month}-${String(i).padStart(2, '0')}`;
+        const dateObj = new Date(year, parseInt(month) - 1, i);
+        const dayOfWeek = dateObj.getDay();
+
+        if (holidays.has(dateStr)) continue;
+        if (satOff && dayOfWeek === 6) continue;
+        if (sunOff && dayOfWeek === 0) continue;
+
+        const status = dateMap[dateStr];
         if (status === 'Present') stats.present++;
         else if (status === 'Late') stats.late++;
-        else if (status === 'Absent') stats.absent++;
         else if (status === 'Leave') stats.leave++;
-      });
+        else stats.absent++;
+      }
 
       document.getElementById('stat-present').textContent = stats.present;
       document.getElementById('stat-absent').textContent = stats.absent;
@@ -2325,10 +2397,10 @@ async function loadAttendanceData() {
       document.getElementById('att-late').textContent = stats.late;
       document.getElementById('att-leave').textContent = stats.leave;
 
-      document.getElementById('stat-leave').textContent = Math.max(0, 12 - Object.keys(dateMap).length);
+      document.getElementById('stat-leave').textContent = Math.max(0, 12 - stats.leave);
 
-      renderCalendar(data);
-      renderAttendanceLogs(data);
+      renderCalendar(attendanceData);
+      renderAttendanceLogs(attendanceData);
     }
   } catch (err) {
     console.error(err);
@@ -2373,6 +2445,29 @@ function renderCalendar(logs) {
   }
 
   document.getElementById('cal-container').innerHTML = html;
+}
+
+async function requestAttendanceRegularization(date) {
+  const empId = localStorage.getItem('auth_emp_id');
+  const reason = prompt('Enter reason for regularization request:');
+
+  if (!reason) return;
+
+  try {
+    const { error } = await supabaseClient
+      .from('attendance_regularization')
+      .insert([{
+        emp_id: empId,
+        date: date,
+        reason: reason,
+        status: 'pending'
+      }]);
+
+    if (error) throw error;
+    alert('✅ Regularization request submitted! Admin will review it.');
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
 }
 
 function renderAttendanceLogs(logs) {
@@ -2441,6 +2536,9 @@ function renderAttendanceLogs(logs) {
         </div>
         <div class="log-item-details">
           ${detailsHtml}
+          <div style="padding:12px;text-align:center;border-top:1px solid rgba(0,102,255,0.1)">
+            <button style="background:#FF9500;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600" onclick="requestAttendanceRegularization('${date}')">📋 Request Regularization</button>
+          </div>
         </div>
       </div>
     `;
@@ -2821,6 +2919,20 @@ function switchLeaveTab(tab) {
   document.getElementById('leave-holidays-tab').style.display = 'none';
   document.getElementById(`leave-${tab}-tab`).style.display = 'block';
 
+  document.querySelectorAll('div[style*="overflow-x: auto"] .tab-btn').forEach(btn => {
+    btn.style.background = 'transparent';
+    btn.style.color = 'var(--text)';
+    btn.style.border = '1px solid rgba(0,102,255,0.2)';
+  });
+  event.target.style.background = 'linear-gradient(135deg,var(--primary),var(--primary-light))';
+  event.target.style.color = 'white';
+  event.target.style.border = '1px solid rgba(0,102,255,0.3)';
+
+  if (tab === 'balance') loadLeaveBalance();
+  if (tab === 'apply') {
+    loadLeaveTypes();
+    setTimeout(setupLeaveFormHandlers, 100);
+  }
   if (tab === 'history') loadLeaveHistory();
   if (tab === 'holidays') loadCompanyHolidays();
 }
@@ -2856,30 +2968,34 @@ async function loadLeaveBalance() {
 
     if (!types) return;
 
+    const currentYear = new Date().getFullYear();
     const { data: balances } = await supabaseClient
       .from('employee_leave_balance')
       .select('*')
-      .eq('emp_id', empId);
+      .eq('emp_id', empId)
+      .eq('year', currentYear);
 
     let html = '';
     types.forEach(type => {
-      const balance = balances?.find(b => b.leave_type_id === type.id) || {balance: type.days_per_year, used: 0};
-      const remaining = balance.balance - balance.used;
-      const total = type.days_per_year;
-      const percent = total > 0 ? Math.round((remaining / total) * 100) : 0;
+      const balance = balances?.find(b => b.leave_type_id === type.id);
+      const totalDays = type.days_per_year || 0;
+      const usedDays = balance?.used || 0;
+      const remaining = Math.max(0, totalDays - usedDays);
+      const percent = totalDays > 0 ? Math.round((remaining / totalDays) * 100) : 0;
 
       html += `
         <div class="bal-card">
           <div class="bal-type">${type.name}</div>
-          <div class="bal-count">${remaining} <span class="bal-total">/ ${total}</span></div>
-          <div class="bal-bar"><div class="bal-fill" style="width:${percent}%;background:${type.color}"></div></div>
+          <div class="bal-count">${remaining} <span class="bal-total">/ ${totalDays}</span></div>
+          <div class="bal-bar"><div class="bal-fill" style="width:${percent}%;background:${type.color || '#0066FF'}"></div></div>
         </div>
       `;
     });
 
-    document.getElementById('leave-balance-container').innerHTML = html;
+    document.getElementById('leave-balance-container').innerHTML = html || '<div style="text-align:center;color:var(--muted);padding:20px">No leave balance data</div>';
   } catch (err) {
-    console.log('Error loading leave balance');
+    console.error('Error loading leave balance:', err);
+    document.getElementById('leave-balance-container').innerHTML = '<div style="text-align:center;color:var(--red);padding:20px">Error loading balance</div>';
   }
 }
 
@@ -2961,6 +3077,66 @@ async function loadCompanyHolidays() {
   } catch (err) {
     console.log('Error loading holidays');
   }
+}
+
+function setupLeaveFormHandlers() {
+  const leaveTypeSelect = document.getElementById('leave-type');
+  const fromDateInput = document.getElementById('leave-from');
+  const toDateInput = document.getElementById('leave-to');
+
+  leaveTypeSelect.addEventListener('change', async () => {
+    const currentYear = new Date().getFullYear();
+    const leaveTypeId = leaveTypeSelect.value;
+
+    if (!leaveTypeId) {
+      document.getElementById('leave-available').textContent = '—';
+      return;
+    }
+
+    try {
+      const empId = localStorage.getItem('auth_emp_id');
+      const { data: leaveType } = await supabaseClient
+        .from('leave_types')
+        .select('days_per_year')
+        .eq('id', leaveTypeId)
+        .single();
+
+      const { data: balance } = await supabaseClient
+        .from('employee_leave_balance')
+        .select('used')
+        .eq('emp_id', empId)
+        .eq('leave_type_id', leaveTypeId)
+        .eq('year', currentYear)
+        .single();
+
+      const total = leaveType?.days_per_year || 0;
+      const used = balance?.used || 0;
+      const available = Math.max(0, total - used);
+
+      document.getElementById('leave-available').textContent = `${available} days available`;
+    } catch (err) {
+      document.getElementById('leave-available').textContent = '—';
+    }
+  });
+
+  fromDateInput.addEventListener('change', calculateLeaveDays);
+  toDateInput.addEventListener('change', calculateLeaveDays);
+}
+
+function calculateLeaveDays() {
+  const fromDate = document.getElementById('leave-from').value;
+  const toDate = document.getElementById('leave-to').value;
+
+  if (!fromDate) {
+    document.getElementById('leave-days').textContent = '0';
+    return;
+  }
+
+  const from = new Date(fromDate);
+  const to = new Date(toDate || fromDate);
+  const days = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
+
+  document.getElementById('leave-days').textContent = Math.max(1, days);
 }
 
 async function submitLeave() {
